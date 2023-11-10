@@ -1,15 +1,5 @@
 # Nim Extension
 
-Visual Studio:
-[![Version](https://vsmarketplacebadge.apphb.com/version/nimsaem.nimvscode.svg)](https://marketplace.visualstudio.com/items?itemName=nimsaem.nimvscode)
-[![Installs](https://vsmarketplacebadge.apphb.com/installs/nimsaem.nimvscode.svg)](https://marketplace.visualstudio.com/items?itemName=nimsaem.nimvscode)
-[![Ratings](https://vsmarketplacebadge.apphb.com/rating/nimsaem.nimvscode.svg)](https://vsmarketplacebadge.apphb.com/rating/nimsaem.nimvscode.svg)
-
-Open-VSX:
-[![Version](https://img.shields.io/open-vsx/v/nimsaem/nimvscode)](https://open-vsx.org/extension/nimsaem/nimvscode)
-[![Installs](https://img.shields.io/open-vsx/dt/nimsaem/nimvscode)](https://open-vsx.org/extension/nimsaem/nimvscode)
-[![Ratings](https://img.shields.io/open-vsx/rating/nimsaem/nimvscode)](https://open-vsx.org/extension/nimsaem/nimvscode)
-
 This extension adds language support for the Nim language to VS Code, including:
 
 * Syntax Highlight (nim, nimble, nim.cfg)
@@ -244,4 +234,4 @@ Alternatively, feel free to give side-loading a shot.
 
 ## ChangeLog
 
-ChangeLog is located [here](https://github.com/saem/vscode-nim/blob/main/CHANGELOG.md)
+ChangeLog is located [here](https://github.com/nim-lang/vscode-nim/blob/main/CHANGELOG.md)
