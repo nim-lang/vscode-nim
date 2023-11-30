@@ -572,7 +572,7 @@ proc notExists*(db: FlatDb, matcher: Matcher): bool =
   return not db.exists(matcher)
 
 # ----------------------------- Matcher -----------------------------------------
-proc equal*(key: cstring, val: cstring): proc {.inline.} =
+proc equal*(key: cstring, val: cstring): proc {.inline, closure.} =
   return proc (x: JsObject): bool =
     return x.getOrDefault(key).getStr() == val
 proc equal*(key: cstring, val: cint): proc {.inline.} =
@@ -585,11 +585,11 @@ proc equal*(key: cstring, val: bool): proc {.inline.} =
   return proc (x: JsObject): bool =
     return x.getOrDefault(key).getBool() == val
 
-proc matches*(key: cstring, val: RegExp): proc {.inline.} =
+proc matches*(key: cstring, val: RegExp): proc {.inline, closure.} =
   return proc (x: JsObject): bool =
     return val.test(x.getOrDefault(key).getStr())
 
-proc oneOf*(key: cstring, val: seq[cstring]): proc {.inline.} =
+proc oneOf*(key: cstring, val: seq[cstring]): proc {.inline, closure.} =
   return proc (x: JsObject): bool =
     return val.anyIt(it == x.getOrDefault(key).getStr())
 
@@ -606,7 +606,7 @@ proc higher*(key: cstring, val: cint): proc {.inline.} =
   return proc (x: JsObject): bool = x.getOrDefault(key).getInt > val
 proc higher*(key: cstring, val: float): proc {.inline.} =
   return proc (x: JsObject): bool = x.getOrDefault(key).getFloat > val
-proc higherEqual*(key: cstring, val: cint): proc {.inline.} =
+proc higherEqual*(key: cstring, val: cint): proc {.inline, closure.} =
   return proc (x: JsObject): bool = x.getOrDefault(key).getInt >= val
 proc higherEqual*(key: cstring, val: float): proc {.inline.} =
   return proc (x: JsObject): bool = x.getOrDefault(key).getFloat >= val
