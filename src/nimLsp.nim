@@ -7,7 +7,7 @@ from std/strformat import fmt
 from tools/nimBinTools import getNimbleExecPath, getBinPath
 from spec import ExtensionState
 
-proc startLanguageServer(tryInstall: bool, state: ExtensionState) =
+proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let rawPath = getBinPath("nimlangserver")
   if rawPath.isNil or not fs.existsSync(path.resolve(rawPath)):
     console.log("nimlangserver not found on path")
@@ -19,9 +19,9 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) =
       discard cp.exec(
         command,
         ExecOptions{},
-        proc(err: ExecError, stdout: cstring, stderr: cstring): void =
+        proc(err: ExecError, stdout: cstring, stderr: cstring): void {.async.} =
           console.log("Nimble install finished, validating by checking if nimlangserver is present.")
-          startLanguageServer(false, state))
+          await startLanguageServer(false, state))
     else:
       vscode.window.showInformationMessage("Unable to find/install `nimlangserver`.")
   else:
@@ -43,6 +43,11 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) =
        cstring("Nim Language Server"),
        serverOptions,
        clientOptions)
-    state.client.start()
+    await state.client.start()
 
 export startLanguageServer
+
+proc stopLanguageServer(state: ExtensionState) {.async.} =
+  await state.client.stop()
+
+export stopLanguageServer
