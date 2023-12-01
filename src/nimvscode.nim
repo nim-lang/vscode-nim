@@ -33,7 +33,7 @@ from nimSuggestExec import extensionContext, initNimSuggest,
 from nimUtils import ext, getDirtyFile, outputLine
 from nimProjects import processConfig, configUpdate
 from nimMode import mode
-from nimLsp import startLanguageServer
+from nimLsp import startLanguageServer, stopLanguageServer
 
 var state: ExtensionState
 var diagnosticCollection {.threadvar.}: VscodeDiagnosticCollection
@@ -295,7 +295,7 @@ proc clearCachesCmd(): void =
   let config = vscode.workspace.getConfiguration("files")
   discard clearCaches(config.getStrBoolMap("watcherExclude", defaultIndexExcludeGlobs))
 
-proc activate*(ctx: VscodeExtensionContext): void =
+proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   var config = vscode.workspace.getConfiguration("nim")
   state = ExtensionState(
     ctx: ctx,
@@ -320,7 +320,7 @@ proc activate*(ctx: VscodeExtensionContext): void =
   let provider = config.getStr("provider")
 
   if provider == "lsp":
-    startLanguageServer(true, state)
+    await startLanguageServer(true, state)
   elif provider == "nimsuggest" and config.getBool("enableNimsuggest"):
     initNimSuggest()
     ctx.subscriptions.add(vscode.languages.registerCompletionItemProvider(mode,
@@ -466,7 +466,10 @@ proc activate*(ctx: VscodeExtensionContext): void =
   discard initImports()
   outputLine("[info] Extension Activated")
 
-proc deactivate*(): void =
+proc deactivate*(): void {.async.} =
+  let provider = nimUtils.ext.config.getStr("provider")
+  if provider == "lsp":
+    await stopLanguageServer(nimUtils.ext)
   discard onClose()
   discard closeAllNimSuggestProcesses()
   fileWatcher.dispose()
