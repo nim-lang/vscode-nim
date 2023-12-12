@@ -1,6 +1,6 @@
 # Package
 
-version     = "0.1.26"
+version     = "0.8.0"
 author      = "saem"
 description = "Nim language support for Visual Studio Code written in Nim"
 license     = "MIT"
@@ -11,7 +11,7 @@ bin         = @["nimvscode"]
 
 # Deps
 
-# requires "nim == 1.6.16"
+requires "nim >= 2.0.0"
 
 import std/os
 
