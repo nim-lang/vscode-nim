@@ -247,9 +247,10 @@
                 },
                 "nim.enableNimsuggest": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Enable calling nimsuggest process to provide completion suggestions, hover suggestions, etc.\nThis option requires restart to take effect.",
-                    "scope": "resource"
+                    "scope": "resource",
+                    "deprecationMessage": "Deprecated: Please use the Nim language server backend instead."
                 },
                 "nim.provider": {
                     "type": "string",
@@ -260,7 +261,8 @@
                         "lsp",
                         "none"
                     ],
-                    "scope": "resource"
+                    "scope": "resource",
+                    "deprecationMessage": "Deprecated: Please use the lsp backend."
                 },
                 "nim.useNimsuggestCheck": {
                     "type": "boolean",
