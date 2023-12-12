@@ -1,6 +1,6 @@
 {
     "name": "nimlang",
-    "displayName": "nim-larg.org",
+    "displayName": "nim-lang.org",
     "description": "Nim language support for Visual Studio Code written in Nim",
     "version": "0.8.0",
     "publisher": "NimLang",
