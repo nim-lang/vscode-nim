@@ -11,7 +11,7 @@ bin         = @["nimvscode"]
 
 # Deps
 
-requires "nim == 1.6.16"
+# requires "nim == 1.6.16"
 
 import std/os
 
