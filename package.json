@@ -1,11 +1,11 @@
 {
-    "name": "nimvscode",
-    "displayName": "Nim",
+    "name": "nimlang",
+    "displayName": "nim-larg.org",
     "description": "Nim language support for Visual Studio Code written in Nim",
-    "version": "0.1.26",
-    "publisher": "nimsaem",
+    "version": "0.8.0",
+    "publisher": "NimLang",
     "author": {
-        "name": "Saem"
+        "name": "NimLang"
     },
     "license": "MIT",
     "icon": "images/nim_icon.png",
@@ -20,10 +20,10 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/saem/vscode-nim.git"
+        "url": "https://github.com/nim-lang/vscode-nim/"
     },
     "bugs": {
-        "url": "https://github.com/saem/vscode-nim/issues"
+        "url": "https://github.com/nim-lang/vscode-nim/issues"
     },
     "scripts": {
         "vscode:prepublish": "nimble release"
