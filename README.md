@@ -15,8 +15,6 @@ This extension adds language support for the Nim language to VS Code, including:
 * Nim check result reported in `Nim` output channel (great for macro development)
   <details><summary>demo</summary>![output channel demo](images/nim_vscode_output_demo.gif "Demo of macro evaluation in the output channel")</details>
 
-[Read how it differs](#history--trivia) from other Nim extensions, of which there are a surprising number.
-
 ## Using
 
 First, you will need to install [Visual Studio Code](https://code.visualstudio.com/) `1.27.0` or higher.
@@ -66,40 +64,6 @@ The following Visual Studio Code settings are available for the Nim extension.  
     "nim.licenseString": "# Copyright 2020.\n\n"
 }
 ```
-
-#### Nim Lanugage Server integration (experimental)
-
-`vscode-nim` provides optional integration with [Nim Language Server](https://github.com/Nim-lang/langserver) as an
-alternative of using `nimsuggest`. In order to activate it, put the following
-lines in your config:
-
-```json
-{
-    "nim.provider": "lsp"
-}
-```
-
-Similar to `vscode-nim` [Nim Language Server](https://github.com/Nim-lang/langserver) uses `nimsuggest` under the
-hood and to control the way `nimsuggest` is created you can use
-`nim.projectMapping`. Here it is a sample config:
-
-``` json
-{
-    "nim.provider": "lsp",
-    "nim.projectMapping": [{
-        // open files under tests using one nimsuggest instance started with root = test/all.nim
-        "projectFile": "tests/all.nim",
-        "fileRegex": "tests/.*\\.nim"
-    }, {
-        // everything else - use main.nim as root.
-        "projectFile": "main.nim",
-        "fileRegex": ".*\\.nim"
-    }]
-}
-```
-
-For the full set of properties supported by the language server you can check [Configuration options section.](https://github.com/Nim-lang/langserver#configuration-options)
-To access the server commands(e. g. (Re)starting nimsuggest) use `Command palette...`  -> `Source actions`
 
 ### Commands
 
@@ -173,7 +137,7 @@ You should be set up now to be able to debug from a given file in the native VS 
 
 ## Code Completion
 
-This extension relies on nimsuggest for code completion. Nimsuggest is basically a frontend for the nim compiler, so it accepts compiler flags, like `--path`, as well as reads [config files.](https://nim-lang.org/docs/nimc.html#compiler-usage-configuration-files) If you're not getting code completion suggestions, nimsuggest does not have a complete picture of your project. You likely need to create a config file for your project file with `--path` options for nimsuggest.
+This extension relies on the Nim Language Server for code completion. You can read more about it [here](https://github.com/nim-lang/langserver)
 
 ---
 
@@ -202,14 +166,9 @@ This extension started out as a fork of the @saem extension [vscode-nim](https:/
 
 Thank you Saem for your work and letting us build on top of it.
 
-## TODO
+## Roadmap
 
-* Clean-up
-  * Correctly model various nim project concepts
-  * Convert to asyncjs API
-* Extract most functionality into an LSP (check existing one)
-* Extract Visual Studio Code API into a separate Nimble package
-  * Switch to using concepts for interfaces
+The roadmap is located [here](https://github.com/nim-lang/RFCs/issues/544)
 
 ## ChangeLog
 
