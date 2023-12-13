@@ -3,8 +3,7 @@
 
 import platform/vscodeApi
 import platform/js/[jsString, jsre]
-import std/jsconsole
-
+import std/[jsconsole, sequtils, tables]
 import nimSuggestExec, nimImports
 from nimProjects import getProjectFileInfo
 
@@ -78,7 +77,7 @@ proc provideCompletionItems*(
         true,
         doc.getText()
       ).then(proc(items: seq[NimSuggestResult]) =
-        var suggestions: seq[VscodeCompletionItem] = @[]
+        var suggestions = initTable[string, VscodeCompletionItem]()
         if (not items.isNull() and not items.isUndefined()):
           for item in items:
             if (
@@ -94,10 +93,13 @@ proc provideCompletionItems*(
               suggestion.detail = nimSymDetails(item)
               suggestion.sortText = (cstring("0000" & $suggestions.len))[^4 .. ^1]
               # use predefined text to disable suggest sorting
-              suggestion.documentationMD = vscode.newMarkdownString(
-                  item.documentation)
-              suggestions.add(suggestion)
-        resolve(suggestions)
+              suggestion.documentationMD = vscode.newMarkdownString(item.documentation)
+              #deduplicate suggestions
+              let key = $item.symbolName
+              if key notin suggestions:
+                suggestions[key] = suggestion                      
+
+        resolve(suggestions.values.toSeq())
       ).catch(proc(reason: JsObject) = reject(reason))
   ).catch(proc(reason: JsObject): Promise[seq[VscodeCompletionItem]] =
     console.error("nimSuggest failed: ", reason)
