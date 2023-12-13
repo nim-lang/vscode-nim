@@ -1,7 +1,8 @@
 # ChangeLog
 
-## 0.8.1 (13 Dec 2023)
+## 0.8.2 (13 Dec 2023)
 * lsp (nimlangserver) is the new default and deprecates NimSuggest
+* unifies function overloading
 
 ## 0.1.26 (07 May 2022)
 
