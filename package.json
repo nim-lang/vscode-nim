@@ -308,6 +308,12 @@
                     ],
                     "default": "off",
                     "description": "Traces the communication between VS Code and the Nim language server."
+                },
+                "nim.lsp.path":{
+                    "type": "string",
+                    "default": "",
+                    "description": "Path to the Nim language server executable. If empty, the extension will try to find the language server in the PATH environment variable.",
+                    "scope": "resource"
                 }
             }
         },

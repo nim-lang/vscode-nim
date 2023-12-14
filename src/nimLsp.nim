@@ -7,8 +7,15 @@ from std/strformat import fmt
 from tools/nimBinTools import getNimbleExecPath, getBinPath
 from spec import ExtensionState
 
+proc getLspPath(): cstring = 
+  var lspPath = vscode.workspace.getConfiguration("nim").getStr("lsp.path")
+  if lspPath.isNil or lspPath == "":
+    lspPath = getBinPath("nimlangserver")
+  console.log("Attempting to use nimlangserver at " & lspPath)
+  lspPath
+
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
-  let rawPath = getBinPath("nimlangserver")
+  let rawPath = getLspPath()
   if rawPath.isNil or not fs.existsSync(path.resolve(rawPath)):
     console.log("nimlangserver not found on path")
     if tryInstall and not state.installPerformed:

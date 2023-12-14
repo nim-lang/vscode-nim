@@ -1,5 +1,8 @@
 # ChangeLog
 
+##dev
+* adds a conf setting to optionally the lsp path
+
 ## 0.8.2 (13 Dec 2023)
 * unifies function overloading
 
