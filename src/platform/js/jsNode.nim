@@ -42,8 +42,8 @@ proc bufferConcat*(b: Array[Buffer]): Buffer {.importcpp: "(Buffer.concat(@))".}
 proc bufferAlloc*(size: cint): Buffer {.importcpp: "(Buffer.alloc(@))".}
 
 # global
-proc setInterval*(g: GlobalModule, f: proc(): void, t: cint): Timeout {.
-    importcpp, discardable.}
+proc setInterval*(g: GlobalModule, f: proc(): void, t: cint): Timeout {.importcpp, discardable.}
+proc setTimeout*(g: GlobalModule, f: proc(): void, t: cint): Timeout {.importcpp, discardable.}
 proc clearInterval*(g: GlobalModule, t: Timeout): void {.importcpp.}
 
 # Array
