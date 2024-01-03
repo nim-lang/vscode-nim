@@ -13,4 +13,6 @@ proc newTextEncoder*(u: Util): TextEncoder {.
 # TextEncoder
 proc encode*(enc: TextEncoder, content: cstring): seq[uint8] {.importcpp.}
 
+proc decode*(enc: TextEncoder, content: seq[uint8]): cstring {.importcpp.}
+
 var util*: Util = require("util").toJs().to(Util)
