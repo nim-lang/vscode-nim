@@ -319,6 +319,21 @@
                     "type": "boolean",
                     "default": "true",
                     "description": "Enable inlay type hints."
+                },
+                "nim.inlayHints.exceptionHints.enable": {
+                    "type": "boolean",
+                    "default": "true",
+                    "description": "Enable inlay hints for exceptions."
+                },
+                "nim.inlayHints.exceptionHints.hintStringLeft": {
+                    "type": "string",
+                    "default": "🔔",
+                    "description": "The string to use for exception hints. This string is displayed to the left of the symbol name."
+                },
+                "nim.inlayHints.exceptionHints.hintStringRight": {
+                    "type": "string",
+                    "default": "",
+                    "description": "The string to use for exception hints. This string is displayed to the right of the symbol name."
                 }
             }
         },
