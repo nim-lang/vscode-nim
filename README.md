@@ -18,7 +18,7 @@ This extension adds language support for the Nim language to VS Code, including:
 ## Using
 
 First, you will need to install [Visual Studio Code](https://code.visualstudio.com/) `1.27.0` or higher.
-In the command palette (`cmd-shift-p`) select `Install Extension` and choose `Nim`.
+In the command palette (`cmd-shift-p`) select `Install Extension` and choose `nim-lang.org`.
 
 The following tools are required for the extension:
 
@@ -50,8 +50,6 @@ The following Visual Studio Code settings are available for the Nim extension.  
 * `nim.lintOnSave` - perform the project check for errors on save
 * `nim.project` - optional array of projects file, if nim.project is not defined then all nim files will be used as separate project
 * `nim.licenseString` - optional license text that will be inserted on nim file creation
-* `nim.provider` - specifies the backend to use for language features. It can be
-  `nimsuggest`, `lsp` or `none`
 
 #### Example
 
