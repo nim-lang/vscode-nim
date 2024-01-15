@@ -264,6 +264,13 @@ type
 
   VscodeWorkspaceConfiguration* = ref VscodeWorkspaceConfigurationObj
   VscodeWorkspaceConfigurationObj {.importc.} = object of JsRoot
+  VsCodeDebugConfiguration* = ref VsCodeDebugConfigurationObj
+  VsCodeDebugConfigurationObj {.importc.} = object of JsRoot
+    `type`*: cstring
+    request*: cstring
+    name*: cstring
+    program*: cstring
+    args*: Array[cstring]
 
   VscodeWorkspaceFolder* = ref VscodeWorkspaceFolderObj
   VscodeWorkspaceFolderObj {.importc.} = object of JsObject
@@ -488,6 +495,9 @@ type
   VscodeCommands* = ref VscodeCommandsObj
   VscodeCommandsObj {.importc.} = object of JsObject
 
+  VSCodeDebug* = ref VscodeDebugObj
+  VscodeDebugObj {.importc.} = object of JsObject
+
   VscodeStatusBarAlignment* {.nodecl, pure.} = enum
     left = 1
     right = 2
@@ -511,6 +521,7 @@ type
     commands*: VscodeCommands
     workspace*: VscodeWorkspace
     languages*: VscodeLanguages
+    debug*: VSCodeDebug
 
 # static function
 proc newWorkspaceEdit*(vscode: Vscode): VscodeWorkspaceEdit {.
@@ -697,6 +708,13 @@ proc onDidDelete*(
   w: VscodeFileSystemWatcher,
   listener: proc(uri: VscodeUri): void
 ): VscodeDisposable {.importcpp, discardable.}
+
+#Debug
+proc startDebugging*(
+  debug: VSCodeDebug,
+  folder: VscodeWorkspaceFolder,
+  config: cstring | VsCodeDebugConfiguration
+): Future[bool] {.importcpp.}
 
 # Languages
 proc match*(langs: VscodeLanguages, selector: VscodeDocumentFilter,
