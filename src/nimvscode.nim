@@ -231,11 +231,12 @@ proc startBuildOnSaveWatcher(subscriptions: Array[VscodeDisposable]) =
     subscriptions
   )
 
-proc runFile(): void =
+proc runFile(ignore: bool, isDebug: bool = false): void =
   var
     editor = vscode.window.activeTextEditor
     nimCfg = vscode.workspace.getConfiguration("nim")
     nimBuildCmdStr: cstring = "nim " & nimCfg.getStr("buildCommand")
+    runArg: cstring = if isDebug: " --debugger:native \"" else: " -r \""
   if not editor.isNil():
     if terminal.isNil():
       terminal = vscode.window.createTerminal("Nim")
@@ -244,7 +245,7 @@ proc runFile(): void =
     if editor.document.isUntitled:
       terminal.sendText(
           nimBuildCmdStr &
-          " -r \"" &
+          runArg &
           getDirtyFile(editor.document) &
           "\"",
           true
@@ -253,7 +254,7 @@ proc runFile(): void =
       var
         outputDirConfig = nimCfg.getStr("runOutputDirectory")
         outputParams: cstring = ""
-      if not not outputDirConfig.toJs().to(bool):
+      if outputDirConfig.toJs().to(bool):
         if vscode.workspace.workspaceFolders.toJs().to(bool):
           var rootPath: cstring = ""
           for folder in vscode.workspace.workspaceFolders:
@@ -274,7 +275,7 @@ proc runFile(): void =
             terminal.sendText(
                 nimBuildCmdStr &
                 outputParams &
-                " -r \"" &
+                runArg &
                 editor.document.fileName &
                 "\"",
                 true
@@ -284,11 +285,29 @@ proc runFile(): void =
         terminal.sendText(
             nimBuildCmdStr &
             outputParams &
-            " -r \"" &
+            runArg &
             editor.document.fileName &
             "\"",
             true
         )
+
+proc debugFile() = 
+  let
+    config = vscode.workspace.getConfiguration("nim")
+    outputDirConfig = config.getStr("runOutputDirectory")
+    typ = config.getStr("debug.type")
+    editor = vscode.window.activeTextEditor
+    filename = editor.document.fileName
+    filePath  = path.join(outputDirConfig, path.basename(editor.document.fileName).replace(".nim", ""))
+    workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri)
+  #compiles the file
+  runFile(ignore = false, isDebug = true)
+  let debugConfiguration = VsCodeDebugConfiguration(
+    name: "Nim: " & filename, `type`: typ, request: "launch", program: filePath 
+  )
+  discard vscode.debug.startDebugging(workspaceFolder, debugConfiguration)
+    .then(proc(success: bool) = console.log("Debugging started"))
+
 
 proc clearCachesCmd(): void =
   ## setup a command to clear file and type caches in case they're out of date
@@ -308,6 +327,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   nimFormatting.extensionContext = ctx
 
   vscode.commands.registerCommand("nim.run.file", runFile)
+  vscode.commands.registerCommand("nim.debug.file", debugFile)
   vscode.commands.registerCommand("nim.check", runCheck)
   vscode.commands.registerCommand("nim.restartNimsuggest", restartNimsuggest)
   vscode.commands.registerCommand("nim.execSelectionInTerminal", execSelectionInTerminal)

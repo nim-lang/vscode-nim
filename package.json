@@ -138,6 +138,11 @@
                 "category": "Nim"
             },
             {
+                "command": "nim.debug.file",
+                "title": "Debug selected Nim file",
+                "category": "Nim"
+            },
+            {
                 "command": "nim.check",
                 "title": "Check Nim project",
                 "category": "Nim"
@@ -169,6 +174,11 @@
                     "when": "editorLangId == 'nim'",
                     "command": "nim.run.file",
                     "group": "run@1"
+                },
+                {
+                    "when": "editorLangId == 'nim'",
+                    "command": "nim.debug.file",
+                    "group": "run@2"
                 }
             ]
         },
@@ -176,6 +186,11 @@
             {
                 "key": "F6",
                 "command": "nim.run.file",
+                "when": "editorLangId == 'nim'"
+            },
+            {
+                "key": "shift+F5",
+                "command": "nim.debug.file",
                 "when": "editorLangId == 'nim'"
             },
             {
@@ -334,6 +349,11 @@
                     "type": "string",
                     "default": "",
                     "description": "The string to use for exception hints. This string is displayed to the right of the symbol name."
+                },
+                "nim.debug.type": {
+                    "type": "string",
+                    "default": "lldb",
+                    "description": "The type of debugger to use when using Nim: Debug selected file. The value is the same value as typically used in launch.json for the type attribute."   
                 }
             }
         },
