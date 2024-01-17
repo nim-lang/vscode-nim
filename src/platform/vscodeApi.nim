@@ -495,8 +495,16 @@ type
   VscodeCommands* = ref VscodeCommandsObj
   VscodeCommandsObj {.importc.} = object of JsObject
 
-  VSCodeDebug* = ref VscodeDebugObj
+  VscodeDebug* = ref VscodeDebugObj
   VscodeDebugObj {.importc.} = object of JsObject
+
+  VscodeDebugSession* = ref VScodeDebugSessionObj 
+  VscodeDebugSessionObj {.importc.} = object of JsObject
+
+  VSCodeDebugExpression* = ref VSCodeDebugExpressionObj
+  VSCodeDebugExpressionObj {.importc.} = object of JsObject
+      expression*: cstring
+      context*: cstring
 
   VscodeStatusBarAlignment* {.nodecl, pure.} = enum
     left = 1
@@ -711,10 +719,21 @@ proc onDidDelete*(
 
 #Debug
 proc startDebugging*(
-  debug: VSCodeDebug,
+  debug: VScodeDebug,
   folder: VscodeWorkspaceFolder,
   config: cstring | VsCodeDebugConfiguration
 ): Future[bool] {.importcpp.}
+
+proc onDidStartDebugSession*(
+  debug: VscodeDebug,
+  listener: proc(session: VscodeDebugSession): void
+): VscodeDisposable {.importcpp, discardable.}
+
+proc customRequest*(
+  session: VscodeDebugSession, 
+  command: cstring,
+  arg: VscodeDebugExpression
+): Future[JsObject] {.importcpp.}
 
 # Languages
 proc match*(langs: VscodeLanguages, selector: VscodeDocumentFilter,
