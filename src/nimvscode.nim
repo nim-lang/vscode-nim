@@ -6,7 +6,7 @@ when not defined(js):
 import platform/vscodeApi
 import platform/js/[jsre, jsString, jsNodeFs, jsNodePath]
 
-import std/jsconsole
+import std/[strformat, jsconsole]
 from std/strformat import fmt
 from std/os import `/`
 
@@ -308,6 +308,16 @@ proc debugFile() =
   discard vscode.debug.startDebugging(workspaceFolder, debugConfiguration)
     .then(proc(success: bool) = console.log("Debugging started"))
 
+proc onStartDebugSession(session: VscodeDebugSession) = 
+  ## load the nimprettylldb.py script into the debugger
+  let dirname {.importjs:"__dirname"}: cstring
+  let pyScriptPath = path.join(dirname, "../scripts/nimprettylldb.py")
+  let cmd = cstring(&"command script import {pyScriptPath}")
+  let arg = VscodeDebugExpression(
+    expression: cmd,
+    context: "repl"
+  )
+  discard session.customRequest("evaluate", arg)
 
 proc clearCachesCmd(): void =
   ## setup a command to clear file and type caches in case they're out of date
@@ -336,6 +346,8 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
 
   processConfig(config)
   discard vscode.workspace.onDidChangeConfiguration(configUpdate)
+  vscode.debug.onDidStartDebugSession(onStartDebugSession)
+    
 
   let provider = config.getStr("provider")
 
