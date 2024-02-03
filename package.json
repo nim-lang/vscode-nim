@@ -332,12 +332,12 @@
                 },
                 "nim.inlayHints.typeHints.enable": {
                     "type": "boolean",
-                    "default": "true",
+                    "default": true,
                     "description": "Enable inlay type hints."
                 },
                 "nim.inlayHints.exceptionHints.enable": {
                     "type": "boolean",
-                    "default": "true",
+                    "default": true,
                     "description": "Enable inlay hints for exceptions."
                 },
                 "nim.inlayHints.exceptionHints.hintStringLeft": {
@@ -354,6 +354,17 @@
                     "type": "string",
                     "default": "lldb",
                     "description": "The type of debugger to use when using Nim: Debug selected file. The value is the same value as typically used in launch.json for the type attribute."   
+                },
+                "nim.notificationVerbosity": {
+                    "type": "string",
+                    "default": "info",
+                    "enum": [
+                        "none",
+                        "error",
+                        "warning",
+                        "info"
+                    ],
+                    "description": "The verbosity of the Nim language server notifications."
                 }
             }
         },
