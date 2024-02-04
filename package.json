@@ -135,12 +135,15 @@
             {
                 "command": "nim.run.file",
                 "title": "Run selected Nim file",
-                "category": "Nim"
+                "category": "Nim",
+                "icon": "$(run)"
             },
             {
                 "command": "nim.debug.file",
                 "title": "Debug selected Nim file",
-                "category": "Nim"
+                "category": "Nim",
+                "icon": "$(debug-alt)"
+
             },
             {
                 "command": "nim.check",
@@ -178,6 +181,18 @@
                 {
                     "when": "editorLangId == 'nim'",
                     "command": "nim.debug.file",
+                    "group": "run@2"
+                }
+            ],
+            "editor/title/run": [
+                {
+                    "command": "nim.run.file",
+                    "when": "editorLangId == 'nim'",
+                    "group": "run@1"
+                },
+                {
+                    "command": "nim.debug.file",
+                    "when": "editorLangId == 'nim'",
                     "group": "run@2"
                 }
             ]
@@ -357,7 +372,7 @@
                 },
                 "nim.notificationVerbosity": {
                     "type": "string",
-                    "default": "info",
+                    "default": "in",
                     "enum": [
                         "none",
                         "error",
