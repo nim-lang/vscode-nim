@@ -1,8 +1,15 @@
 # ChangeLog
 
-##dev
-* adds a conf setting to optionally the lsp path
-
+## 0.9.0 (5 Feb 2024)
+* added prettifier for Strings when debugging
+* added 'Debug Selected this file command`
+* added a setting to optionally set the lsp path
+* added option for controlling lsp verbosity
+* added notification when there is a newer lsp version available
+* added configuration option for enabling/disabling inlay type hints
+* added configuration keys for the exception hints
+* ux improvement: added shorcut in the current Nim file for run/debug
+  
 ## 0.8.2 (13 Dec 2023)
 * unifies function overloading
 
