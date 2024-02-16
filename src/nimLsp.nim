@@ -117,7 +117,8 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
           console.log("Nimble install finished, validating by checking if nimlangserver is present.")
           await startLanguageServer(false, state))
     else:
-      vscode.window.showInformationMessage("Unable to find/install `nimlangserver`.")
+      let cantInstallInfoMesssage: cstring = "Unable to find/install `nimlangserver`. You can attempt to install it by running `nimble install nimlangserver` or downloading the binaries from https://github.com/nim-lang/langserver/releases."
+      vscode.window.showInformationMessage(cantInstallInfoMesssage)
   else:
     let nimlangserver = path.resolve(rawPath);
     console.log(fmt"nimlangserver found: {nimlangserver}".cstring)
