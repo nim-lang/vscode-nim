@@ -623,6 +623,7 @@ proc with*(uri: VscodeUri, change: VscodeUriChange): VscodeUri {.importcpp.}
 # Output
 proc showInformationMessage*(win: VscodeWindow, msg: cstring) {.importcpp.}
     ## shows an informational message
+proc showErrorMessage*(win: VscodeWindow, message: cstring) {.importcpp.}
 
 # Workspace
 proc saveAll*(ws: VscodeWorkspace, includeUntitledFile: bool): Future[bool] {.importcpp.}
