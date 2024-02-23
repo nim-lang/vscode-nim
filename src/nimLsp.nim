@@ -76,20 +76,31 @@ You can install it by running: nimble install nimlangserver"""
 
 proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion) =
   var isDone = false
+  var gotError: ExecError
+  var gotStdout: cstring
+  var gotStderr: cstring
+
   proc onExec(error: ExecError, stdout: cstring, stderr: cstring) = 
-      let ver = parseVersion($stdout)
-      if ver.isNone():
-        console.error("Unexpected output from nimlangserver: ", stdout)
-      else:
-        isDone = true
-        notifyUserOnTheLSPVersion(ver.get, latestVersion) 
+    # showing VS code user dialog messages does not appear to work from within this callback function,
+    # so we save what we've got here and show all messages in onLspTimeout()
+    isDone = true
+    gotError = error
+    gotStdout = stdout
+    gotStderr = stderr
 
   var process: ChildProcess
   proc onLspTimeout() = 
-    if isDone: return #the process already quit and the user is already notified
-    #Running 0.2.0 kill the started nimlangserver process and notify the user is running an old version of the lsp
-    kill(process)
-    notifyUserOnTheLSPVersion(MinimalLSPVersion, latestVersion)
+    if isDone:
+      let ver = parseVersion($gotStdout)
+      if ver.isNone():
+        console.error("Unexpected output from nimlangserver: ", gotStdout, gotStderr)
+        vscode.window.showErrorMessage("Error starting nimlangserver: " & gotStdout & gotStderr)
+      else:
+        notifyUserOnTheLSPVersion(ver.get, latestVersion)
+    else:
+      #Running 0.2.0 kill the started nimlangserver process and notify the user is running an old version of the lsp
+      kill(process)
+      notifyUserOnTheLSPVersion(MinimalLSPVersion, latestVersion)
 
   global.setTimeout(onLspTimeout, 1000)
   process = cp.exec((nimlangserver & " --version"), ExecOptions(), onExec)    
