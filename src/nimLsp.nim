@@ -129,12 +129,14 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
       .then(
         onfulfilled = proc(value: JsRoot): JsRoot =
           if value.JsObject.to(VscodeMessageItem).title == "Yes":
-            discard cp.exec(
-              command,
-              ExecOptions{},
-              proc(err: ExecError, stdout: cstring, stderr: cstring): void {.async.} =
-                console.log("Nimble install finished, validating by checking if nimlangserver is present.")
-                await startLanguageServer(false, state))
+            if not state.installPerformed:
+              state.installPerformed = true
+              discard cp.exec(
+                command,
+                ExecOptions{},
+                proc(err: ExecError, stdout: cstring, stderr: cstring): void {.async.} =
+                  console.log("Nimble install finished, validating by checking if nimlangserver is present.")
+                  await startLanguageServer(false, state))
           value
         ,
         onrejected = proc(reason: JsRoot): JsRoot =
