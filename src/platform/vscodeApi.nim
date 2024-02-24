@@ -6,6 +6,9 @@ export jsffi, jsPromise, jsNode
 ## TODO: Move from JsObject to JsRoot for more explict errors
 
 type
+  VscodeThenable* = ref VscodeThenableObj
+  VscodeThenableObj {.importc.} = object of JsRoot
+
   VscodeMarkdownString* = ref VscodeMarkdownStringObj
   VscodeMarkdownStringObj {.importc.} = object of JsObject
     value*: cstring
@@ -183,6 +186,8 @@ type
 
   VscodeMarkedString* = ref VscodeMarkedStringObj
   VscodeMarkedStringObj {.importc.} = object of JsObject
+
+proc then*(self: VscodeThenable, onfulfilled: proc(value: JsRoot): JsRoot, onrejected: proc(reason: JsRoot): JsRoot): VscodeThenable {.importcpp, discardable.}
 
 proc cstringToMarkedString(s: cstring): VscodeMarkedString {.importcpp: "#".}
 converter toVscodeMarkedString*(s: cstring): VscodeMarkedString = s.cstringToMarkedString()
@@ -492,6 +497,16 @@ type
     activeTextEditor*: VscodeTextEditor
     visibleTextEditors*: Array[VscodeTextEditor]
 
+  VscodeMessageItem* = ref VscodeMessageItemObj
+  VscodeMessageItemObj {.importc.} = object of JsRoot
+    isCloseAffordance*: bool
+    title*: cstring
+
+  VscodeMessageOptions* = ref VscodeMessageOptionsObj
+  VscodeMessageOptionsObj {.importc.} = object of JsRoot
+    detail*: cstring
+    modal*: bool
+
   VscodeCommands* = ref VscodeCommandsObj
   VscodeCommandsObj {.importc.} = object of JsObject
 
@@ -622,6 +637,7 @@ proc with*(uri: VscodeUri, change: VscodeUriChange): VscodeUri {.importcpp.}
 
 # Output
 proc showInformationMessage*(win: VscodeWindow, msg: cstring) {.importcpp.}
+proc showInformationMessage*(win: VscodeWindow, message: cstring, options: VscodeMessageOptions): VscodeThenable {.importcpp, varargs, discardable.}
     ## shows an informational message
 proc showErrorMessage*(win: VscodeWindow, message: cstring) {.importcpp.}
 
