@@ -131,6 +131,8 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
           if value.JsObject.to(VscodeMessageItem).title == "Yes":
             if not state.installPerformed:
               state.installPerformed = true
+              vscode.window.showInformationMessage(
+                cstring(fmt "Trying to install nimlangserver via '{command}'"))
               discard cp.exec(
                 command,
                 ExecOptions{},
