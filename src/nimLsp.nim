@@ -119,14 +119,31 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
     if tryInstall and not state.installPerformed:
       let command = getNimbleExecPath() & " install nimlangserver --accept"
       vscode.window.showInformationMessage(
-        cstring(fmt "Unable to find nimlangserver, trying to install it via '{command}'"))
-      state.installPerformed = true
-      discard cp.exec(
-        command,
-        ExecOptions{},
-        proc(err: ExecError, stdout: cstring, stderr: cstring): void {.async.} =
-          console.log("Nimble install finished, validating by checking if nimlangserver is present.")
-          await startLanguageServer(false, state))
+        cstring(fmt "Unable to find nimlangserver. Do you want me to attempt to install it via '{command}'?"),
+        VscodeMessageOptions(
+          detail: cstring(""),
+          modal: false
+        ),
+        VscodeMessageItem(title: cstring("Yes"), isCloseAffordance: false),
+        VscodeMessageItem(title: cstring("No"), isCloseAffordance: true))
+      .then(
+        onfulfilled = proc(value: JsRoot): JsRoot =
+          if value.JsObject.to(VscodeMessageItem).title == "Yes":
+            if not state.installPerformed:
+              state.installPerformed = true
+              vscode.window.showInformationMessage(
+                cstring(fmt "Trying to install nimlangserver via '{command}'"))
+              discard cp.exec(
+                command,
+                ExecOptions{},
+                proc(err: ExecError, stdout: cstring, stderr: cstring): void {.async.} =
+                  console.log("Nimble install finished, validating by checking if nimlangserver is present.")
+                  await startLanguageServer(false, state))
+          value
+        ,
+        onrejected = proc(reason: JsRoot): JsRoot =
+          reason
+      )
     else:
       let cantInstallInfoMesssage: cstring = "Unable to find/install `nimlangserver`. You can attempt to install it by running `nimble install nimlangserver` or downloading the binaries from https://github.com/nim-lang/langserver/releases."
       vscode.window.showInformationMessage(cantInstallInfoMesssage)
