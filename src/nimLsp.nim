@@ -52,8 +52,6 @@ proc isSomeSafe(self: Option[LSPVersion]): bool {.inline.} =
   if test: self.isSome()
   else: false
 
-
-
 proc getLatestReleasedLspVersion(default: LSPVersion): Future[LSPVersion] {.async.} = 
   type 
     Tag = object of JsObject
