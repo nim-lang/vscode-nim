@@ -37,9 +37,20 @@ proc parseVersion(version: string): Option[LSPVersion] =
   some (versions[0], versions[1], versions[2])
 
 proc getLatestVersion(versions: seq[LSPVersion]): LSPVersion = 
+  if versions.len == 0: 
+    console.warn("No versions found")
+    return MinimalLSPVersion
   result = versions[0]
   for v in versions:
     if v > result: result = v
+
+
+proc isSomeSafe(self: Option[LSPVersion]): bool {.inline.} =  
+  #hack to fix https://github.com/nim-lang/vscode-nim/issues/47
+  var wrap {.exportc.} = self
+  var test {.importcpp: ("('has' in wrap)").}: bool
+  if test: self.isSome()
+  else: false
 
 proc getLatestReleasedLspVersion(default: LSPVersion): Future[LSPVersion] {.async.} = 
   type 
@@ -61,8 +72,8 @@ proc getLatestReleasedLspVersion(default: LSPVersion): Future[LSPVersion] {.asyn
     return res
     .toTags
     .mapIt(parseVersion($it.name))
-    .filterIt(it.isSome)
-    .mapIt(it.get)
+    .filterIt(it.isSomeSafe)
+    .mapIt(it.get())
     .getLatestVersion()
 
 proc notifyUserOnTheLSPVersion(current, latest: LSPVersion) = 
