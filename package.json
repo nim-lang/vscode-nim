@@ -352,7 +352,7 @@
                 },
                 "nim.inlayHints.parameterHints.enable": {
                     "type": "boolean",
-                    "default": "true",
+                    "default": true,
                     "description": "Enable inlay parameter hints."
                 },
                 "nim.inlayHints.exceptionHints.enable": {
