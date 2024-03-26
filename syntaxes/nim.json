@@ -260,6 +260,26 @@
       ]
     },
     {
+      "begin": "\\{\\.emit:\\s*\\[",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.nim"
+        }
+      },
+      "end": "\\]\\.",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.nim"
+        }
+      },
+      "name": "meta.embedded.block.nim",
+      "patterns": [
+        {
+          "include": "source.nim"
+        }
+      ]
+    },    
+    {
       "begin": "\\{\\.",
       "beginCaptures": {
         "0": {
