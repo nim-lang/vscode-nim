@@ -2,7 +2,7 @@ import std/[jsconsole, strutils, jsfetch, asyncjs, sugar, sequtils, options, str
 import platform/[vscodeApi, languageClientApi]
 
 import platform/js/[jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil]
-
+import nimutils
 from std/strformat import fmt
 from tools/nimBinTools import getNimbleExecPath, getBinPath
 from spec import ExtensionState
@@ -116,16 +116,28 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion) =
   global.setTimeout(onLspTimeout, 1000)
   process = cp.exec((nimlangserver & " --version"), ExecOptions(), onExec)    
 
-proc getLspPath(): cstring = 
-  var lspPath = vscode.workspace.getConfiguration("nim").getStr("lsp.path")
-  if lspPath.isNil or lspPath == "":
-    lspPath = getBinPath("nimlangserver")
-  console.log("Attempting to use nimlangserver at " & lspPath)
-  lspPath
+proc isValidLspPath(lspPath: cstring): bool = 
+  result = not lspPath.isNil and lspPath != "" and fs.existsSync(path.resolve(lspPath))  
+  if lspPath.isNil: 
+    console.log("lspPath is nil")
+  else:
+    console.log(fmt"isValidLspPath({lspPath}) = {result}".cstring)
+
+proc getLspPath(state: ExtensionState): cstring = 
+  #[
+    We first try to use the path from the nim.lsp.path setting.
+    If path is not set, we try to use the global nimlangserver binary.
+    If the global binary is not found, (TODO) we try to use the local nimlangserver binary.
+  ]#
+  result = vscode.workspace.getConfiguration("nim").getStr("lsp.path")
+  if not isValidLspPath(result):
+    result = getBinPath("nimlangserver")
+    if not isValidLspPath(result):
+      result = path.join(state.ctx.storagePath, "bin", "nimlangserver")
 
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
-  let rawPath = getLspPath()
-  if rawPath.isNil or not fs.existsSync(path.resolve(rawPath)):
+  let rawPath = getLspPath(state)
+  if not isValidLspPath(rawPath):
     console.log("nimlangserver not found on path")
     if tryInstall and not state.installPerformed:
       let command = getNimbleExecPath() & " install nimlangserver --accept"
@@ -144,12 +156,30 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
               state.installPerformed = true
               vscode.window.showInformationMessage(
                 cstring(fmt "Trying to install nimlangserver via '{command}'"))
-              discard cp.exec(
-                command,
-                ExecOptions{},
-                proc(err: ExecError, stdout: cstring, stderr: cstring): void {.async.} =
+              let args: seq[cstring] = @["install nimlangserver", "--accept"]
+              var process = cp.spawn(
+                  getNimbleExecPath(), args, 
+                  SpawnOptions(shell: true))
+              process.stdout.onceData(proc(data: Buffer) =
+                outputLine(data.toString())
+              )
+              process.stderr.onceData(proc(data: Buffer) =
+                #TODO properly print error message
+                #Notice this also prints warnings
+                let msg =  $data.toString()
+                if msg.contains("Warning: "):
+                  outputLine(("[Warning]" & msg).cstring)
+                else:
+                  outputLine(("[Error]" & msg).cstring)
+              )
+              process.onClose(proc(code: cint, signal: cstring): void =
+                if code == 0:
+                  outputLine("Nimble install successfully")
+                  discard startLanguageServer(false, state)
                   console.log("Nimble install finished, validating by checking if nimlangserver is present.")
-                  await startLanguageServer(false, state))
+                else:
+                  outputLine("Nimble install failed.")
+              )
           value
         ,
         onrejected = proc(reason: JsRoot): JsRoot =
