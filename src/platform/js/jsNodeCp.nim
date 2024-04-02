@@ -43,6 +43,7 @@ type
 
   SpawnOptions* = ref object
     cwd*: cstring
+    shell*: bool
 
   SpawnSyncOptions* = ref object
     cwd*: cstring
