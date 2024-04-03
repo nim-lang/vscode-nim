@@ -160,12 +160,10 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
               var process = cp.spawn(
                   getNimbleExecPath(), args, 
                   SpawnOptions(shell: true))
-              process.stdout.onceData(proc(data: Buffer) =
+              process.stdout.onData(proc(data: Buffer) =
                 outputLine(data.toString())
               )
-              process.stderr.onceData(proc(data: Buffer) =
-                #TODO properly print error message
-                #Notice this also prints warnings
+              process.stderr.onData(proc(data: Buffer) =
                 let msg =  $data.toString()
                 if msg.contains("Warning: "):
                   outputLine(("[Warning]" & msg).cstring)
