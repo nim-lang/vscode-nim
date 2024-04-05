@@ -135,14 +135,14 @@ proc getLocalLspDir(): cstring =
 proc getLspPath(state: ExtensionState): cstring = 
   #[
     We first try to use the path from the nim.lsp.path setting.
-    If path is not set, we try to use the global nimlangserver binary.
-    If the global binary is not found, we try to use the local nimlangserver binary.
+    If path is not set, we try to use the local nimlangserver binary.
+    If the local binary is not found, we try to use the global nimlangserver binary.
   ]#
   result = vscode.workspace.getConfiguration("nim").getStr("lsp.path")
   if not isValidLspPath(result):
-    result = getBinPath("nimlangserver")
+    result = path.join(getLocalLspDir(), "nimbledeps", "bin", "nimlangserver")
     if not isValidLspPath(result):
-      result = path.join(getLocalLspDir(), "nimbledeps", "bin", "nimlangserver")
+      result = getBinPath("nimlangserver")
 
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let rawPath = getLspPath(state)
