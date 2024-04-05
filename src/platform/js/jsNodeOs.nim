@@ -7,4 +7,6 @@ type
 
 proc tmpdir*(os: OsModule): cstring {.importcpp.}
 
+proc homedir*(os: OsModule): cstring {.importcpp.}
+
 var nodeOs* = require("os").to(OsModule)
