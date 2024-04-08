@@ -140,9 +140,14 @@ proc getLspPath(state: ExtensionState): cstring =
   ]#
   result = vscode.workspace.getConfiguration("nim").getStr("lsp.path")
   if not isValidLspPath(result):
-    result = path.join(getLocalLspDir(), "nimbledeps", "bin", "nimlangserver")
+    var langserverExec = "nimlangserver"
+    if process.platform == "win32":
+      langserverExec.add ".cmd"
+    result = path.join(getLocalLspDir(), "nimbledeps", "bin", langserverExec)
     if not isValidLspPath(result):
       result = getBinPath("nimlangserver")
+   
+  outputLine(("Using nimlangserver from path: " & result))
 
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let rawPath = getLspPath(state)
@@ -197,8 +202,8 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
       vscode.window.showInformationMessage(cantInstallInfoMesssage)
   else:
     let nimlangserver = path.resolve(rawPath);
-    console.log(fmt"nimlangserver found: {nimlangserver}".cstring)
-    console.log("Starting nimlangserver.")
+    outputLine(fmt"nimlangserver found: {nimlangserver}".cstring)
+    outputLine("Starting nimlangserver.")
     let latestVersion = await getLatestReleasedLspVersion(MinimalLSPVersion)
     handleLspVersion(nimlangserver, latestVersion)
 
@@ -218,6 +223,7 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
        serverOptions,
        clientOptions)
     await state.client.start()
+    outputLine("Nim Language Server started")
 
 export startLanguageServer
 
