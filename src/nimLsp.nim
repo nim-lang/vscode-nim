@@ -7,7 +7,14 @@ from std/strformat import fmt
 from tools/nimBinTools import getNimbleExecPath, getBinPath
 from spec import ExtensionState
 
-type LSPVersion = tuple[major: int, minor: int, patch: int]
+type 
+  LSPVersion = tuple[major: int, minor: int, patch: int]
+  LSPInstallPathKind = enum
+    lspPathInvalid, #Invalid path
+    lspPathLocal, #Default local nimble install
+    lspPathGlobal, #Global nimble install
+    lspPathSetting #User defined path
+
 const MinimalLSPVersion = (1, 0, 0)
 
 proc `$` (v: LSPVersion):string = &"v{v.major}.{v.minor}.{v.patch}"
@@ -60,7 +67,11 @@ proc getLatestReleasedLspVersion(default: LSPVersion): Future[LSPVersion] {.asyn
   let url = " https://api.github.com/repos/nim-lang/langserver/tags".cstring
   var failed = false
   let res = await fetch(url)
-    .then((res: Response) => res.json())
+    .then(proc(res: Response): auto = 
+        failed = res.status != 200
+        if failed: #It may fail due to the rate limit
+          console.error("Nimlangserver request to GitHub failed", res.statusText)
+        res.json())
     .then((json: JsObject) => json)
     .catch(proc(err: Error): JsObject = 
       console.error("Nimlangserver request to GitHub failed", err)
@@ -76,16 +87,89 @@ proc getLatestReleasedLspVersion(default: LSPVersion): Future[LSPVersion] {.asyn
     .mapIt(it.get())
     .getLatestVersion()
 
-proc notifyUserOnTheLSPVersion(current, latest: LSPVersion) = 
-  if latest > current:
-    let msg = &"""
-There is a new Nim langserver version available ({latest}). 
-You can install it by running: nimble install nimlangserver"""
-    vscode.window.showInformationMessage(msg.cstring)
-  else:
-    console.log("Your lsp version is updated")
 
-proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion) =
+proc isValidLspPath(lspPath: cstring): bool = 
+  result = not lspPath.isNil and lspPath != "" and fs.existsSync(path.resolve(lspPath))  
+  if lspPath.isNil: 
+    console.log("lspPath is nil")
+  else:
+    console.log(fmt"isValidLspPath({lspPath}) = {result}".cstring)
+
+proc getLocalLspDir(): cstring = 
+  #The lsp is installed inside the user directory because the user 
+  #storage of the extension seems to be too long and the installation fails
+  result = path.join(nodeOs.homedir, ".vscode-nim")
+  if not fs.existsSync(result):
+    fs.mkdirSync(result)
+
+proc getLspPath(state: ExtensionState): (cstring, LSPInstallPathKind) = 
+  #[
+    We first try to use the path from the nim.lsp.path setting.
+    If path is not set, we try to use the local nimlangserver binary.
+    If the local binary is not found, we try to use the global nimlangserver binary.
+  ]#
+  var lspPath = vscode.workspace.getConfiguration("nim").getStr("lsp.path")
+  if lspPath.isValidLspPath:
+    return (lspPath, lspPathSetting)
+  var langserverExec: cstring = "nimlangserver"
+  if process.platform == "win32":
+    langserverExec.add ".cmd"
+  lspPath = path.join(getLocalLspDir(), "nimbledeps", "bin", langserverExec)
+  if isValidLspPath(lspPath):
+    return (lspPath, lspPathLocal)
+  lspPath = getBinPath("nimlangserver")
+  if isValidLspPath(lspPath):
+    return (lspPath, lspPathGlobal)
+  return ("", lspPathInvalid)
+   
+proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.}
+
+proc installNimLangServer(state: ExtensionState, version: Option[LSPVersion]) = 
+  var installCmd = "install nimlangserver"
+  if version.isSome:
+    let v = version.get
+    installCmd.add("@" & &"{v.major}.{v.minor}.{v.patch}")
+  let args: seq[cstring] = @[installCmd.cstring, "--accept", "-l"]
+  var process = cp.spawn(
+      getNimbleExecPath(), args, 
+      SpawnOptions(shell: true, cwd: getLocalLspDir()))
+  process.stdout.onData(proc(data: Buffer) =
+    outputLine(data.toString())
+  )
+  process.stderr.onData(proc(data: Buffer) =
+    let msg =  $data.toString()
+    if msg.contains("Warning: "):
+      outputLine(("[Warning]" & msg).cstring)
+    else:
+      outputLine(("[Error]" & msg).cstring)
+  )
+  process.onClose(proc(code: cint, signal: cstring): void =
+    if code == 0:
+      outputLine("Nimble install successfully")
+      discard startLanguageServer(false, state)
+      console.log("Nimble install finished, validating by checking if nimlangserver is present.")
+    else:
+      outputLine("Nimble install failed.")
+  )
+
+proc notifyOrUpdateOnTheLSPVersion(current, latest: LSPVersion, state: ExtensionState) = 
+  if latest > current:
+    let (_, lspKind) = getLspPath(state)
+    if lspKind == lspPathLocal:
+      installNimLangServer(state, some(latest))
+      let msg = &"""
+  There is a new Nim langserver version available ({latest}). 
+  Proceding to update the local installation of the langserver."""
+      vscode.window.showInformationMessage(msg.cstring)
+    else:
+      var msg = &"""
+  There is a new Nim langserver version available ({latest}). 
+  You can install it by running: nimble install nimlangserver"""
+      vscode.window.showInformationMessage(msg.cstring)
+  else:
+    outputLine("Your lsp version is updated")
+
+proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: ExtensionState) =
   var isDone = false
   var gotError: ExecError
   var gotStdout: cstring
@@ -107,51 +191,18 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion) =
         console.error("Unexpected output from nimlangserver: ", gotStdout, gotStderr)
         vscode.window.showErrorMessage("Error starting nimlangserver: " & gotStdout & gotStderr)
       else:
-        notifyUserOnTheLSPVersion(ver.get, latestVersion)
+        notifyOrUpdateOnTheLSPVersion(ver.get, latestVersion, state)
     else:
       #Running 0.2.0 kill the started nimlangserver process and notify the user is running an old version of the lsp
       kill(process)
-      notifyUserOnTheLSPVersion(MinimalLSPVersion, latestVersion)
+      notifyOrUpdateOnTheLSPVersion(MinimalLSPVersion, latestVersion, state)
 
   global.setTimeout(onLspTimeout, 1000)
   process = cp.exec((nimlangserver & " --version"), ExecOptions(), onExec)    
 
-proc isValidLspPath(lspPath: cstring): bool = 
-  result = not lspPath.isNil and lspPath != "" and fs.existsSync(path.resolve(lspPath))  
-  if lspPath.isNil: 
-    console.log("lspPath is nil")
-  else:
-    console.log(fmt"isValidLspPath({lspPath}) = {result}".cstring)
-
-
-proc getLocalLspDir(): cstring = 
-  #The lsp is installed inside the user directory because the user 
-  #storage of the extension seems to be too long and the installation fails
-  result = path.join(nodeOs.homedir, ".vscode-nim")
-  if not fs.existsSync(result):
-    fs.mkdirSync(result)
-
-
-proc getLspPath(state: ExtensionState): cstring = 
-  #[
-    We first try to use the path from the nim.lsp.path setting.
-    If path is not set, we try to use the local nimlangserver binary.
-    If the local binary is not found, we try to use the global nimlangserver binary.
-  ]#
-  result = vscode.workspace.getConfiguration("nim").getStr("lsp.path")
-  if not isValidLspPath(result):
-    var langserverExec = "nimlangserver"
-    if process.platform == "win32":
-      langserverExec.add ".cmd"
-    result = path.join(getLocalLspDir(), "nimbledeps", "bin", langserverExec)
-    if not isValidLspPath(result):
-      result = getBinPath("nimlangserver")
-   
-  outputLine(("Using nimlangserver from path: " & result))
-
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
-  let rawPath = getLspPath(state)
-  if not isValidLspPath(rawPath):
+  let (rawPath, lspPathKind) = getLspPath(state)
+  if lspPathKind == lspPathInvalid:
     console.log("nimlangserver not found on path")
     if tryInstall and not state.installPerformed:
       let command = getNimbleExecPath() & " install nimlangserver --accept -l"
@@ -170,28 +221,7 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
               state.installPerformed = true
               vscode.window.showInformationMessage(
                 cstring(fmt "Trying to install nimlangserver via '{command}'"))
-              let args: seq[cstring] = @["install nimlangserver", "--accept", "-l"]
-              var process = cp.spawn(
-                  getNimbleExecPath(), args, 
-                  SpawnOptions(shell: true, cwd: getLocalLspDir()))
-              process.stdout.onData(proc(data: Buffer) =
-                outputLine(data.toString())
-              )
-              process.stderr.onData(proc(data: Buffer) =
-                let msg =  $data.toString()
-                if msg.contains("Warning: "):
-                  outputLine(("[Warning]" & msg).cstring)
-                else:
-                  outputLine(("[Error]" & msg).cstring)
-              )
-              process.onClose(proc(code: cint, signal: cstring): void =
-                if code == 0:
-                  outputLine("Nimble install successfully")
-                  discard startLanguageServer(false, state)
-                  console.log("Nimble install finished, validating by checking if nimlangserver is present.")
-                else:
-                  outputLine("Nimble install failed.")
-              )
+              installNimLangServer(state, none(LSPVersion))
           value
         ,
         onrejected = proc(reason: JsRoot): JsRoot =
@@ -205,7 +235,7 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
     outputLine(fmt"nimlangserver found: {nimlangserver}".cstring)
     outputLine("Starting nimlangserver.")
     let latestVersion = await getLatestReleasedLspVersion(MinimalLSPVersion)
-    handleLspVersion(nimlangserver, latestVersion)
+    handleLspVersion(nimlangserver, latestVersion, state)
 
     let
       serverOptions = ServerOptions{
