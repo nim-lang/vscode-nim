@@ -330,7 +330,8 @@ proc clearCaches*(filters: IndexExcludeGlobs) {.async.} =
   await indexWorkspaceFiles(filters)
 
 proc onClose*() {.async.} =
-  discard await allSettled(@[
+  allSettled(@[
     dbFiles.processCommands(),
     dbTypes.processCommands()
   ])
+  

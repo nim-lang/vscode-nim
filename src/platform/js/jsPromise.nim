@@ -17,7 +17,7 @@ proc all*[T](
 ): Future[seq[T]] {.importcpp: "Promise.all(@)", discardable.}
 proc allSettled*[T](
   iterable: openArray[Future[T]]
-): Future[seq[T]] {.importcpp: "Promise.allSettled(@)", discardable.}
+): Future[void] {.importcpp: "Promise.allSettled(@)", discardable.}
 proc promiseReject*[T](reason: T): Future[T] {.importcpp: "Promise.reject(#)", discardable.}
 proc promiseResolve*[T](val: T): Future[T] {.importcpp: "Promise.resolve(#)", discardable.}
 
