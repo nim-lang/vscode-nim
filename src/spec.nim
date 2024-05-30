@@ -14,14 +14,12 @@ type
 
   ExtensionState* = ref object
     ctx*: VscodeExtensionContext
-
     config*: VscodeWorkspaceConfiguration
-
     channel*: VscodeOutputChannel
-
     client*: VscodeLanguageClient
-
     installPerformed*: bool
+    nimDir*: string # Nim used directory. Extracted on activation from nimble. When it's "", means nim in the PATH is used.
+
 # type
 #   SolutionKind* {.pure.} = enum
 #     skSingleFile, skFolder, skWorkspace
@@ -59,3 +57,9 @@ type
 #   ProjectCandidate* = ref object
 #     uri*: VscodeUri
 #     kind*: ProjectCandidateKind
+
+proc getNimCmd*(state: ExtensionState): cstring =
+  if state.nimDir == "":
+    "nim ".cstring
+  else:
+    (state.nimDir & "/nim ").cstring
