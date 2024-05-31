@@ -4,14 +4,12 @@ when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
 import platform/vscodeApi
-import platform/js/[jsre, jsString, jsNodeFs, jsNodePath]
-
-import std/[strformat, jsconsole]
+import platform/js/[jsre, jsString, jsNodeFs, jsNodePath, jsNodeCp]
+import tools/nimBinTools
+import std/[strformat, jsconsole, strutils]
 from std/strformat import fmt
 from std/os import `/`
-
-from spec import ExtensionState
-
+import spec
 import nimRename,
   nimSuggest,
   nimDeclaration,
@@ -232,11 +230,15 @@ proc startBuildOnSaveWatcher(subscriptions: Array[VscodeDisposable]) =
   )
 
 proc runFile(ignore: bool, isDebug: bool = false): void =
-  var
+  #TODO detect nim path
+  let
+    state = nimUtils.ext
     editor = vscode.window.activeTextEditor
     nimCfg = vscode.workspace.getConfiguration("nim")
-    nimBuildCmdStr: cstring = "nim " & nimCfg.getStr("buildCommand")
+    nimBuildCmdStr: cstring = state.getNimCmd() & nimCfg.getStr("buildCommand")
     runArg: cstring = if isDebug: " --debugger:native \"" else: " -r \""
+  
+  outputLine(fmt"[info] Running with Nim from {state.getNimCmd()}".cstring)
   if not editor.isNil():
     if terminal.isNil():
       terminal = vscode.window.createTerminal("Nim")
@@ -324,6 +326,21 @@ proc clearCachesCmd(): void =
   let config = vscode.workspace.getConfiguration("files")
   discard clearCaches(config.getStrBoolMap("watcherExclude", defaultIndexExcludeGlobs))
 
+proc setNimDir(state: ExtensionState) =
+  #TODO allow the user specify a path in the settings
+  #Exec nimble dump and extract the nimDir if it exists
+  let path = vscode.workspace.workspaceFolders[0].uri.fsPath
+  var process = cp.spawn(
+      getNimbleExecPath(), @["dump".cstring], 
+      SpawnOptions(shell: true, cwd: path))
+
+  process.stdout.onData(proc(data: Buffer) =
+    for line in splitLines($data.toString):
+     if line.startsWith("nimDir"):
+       state.nimDir = line[(1 + line.find '"')..^2]
+       outputLine(fmt"[info] Using NimDir from nimble dump. NimDir: {state.nimDir}".cstring)
+  )
+  
 proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   var config = vscode.workspace.getConfiguration("nim")
   state = ExtensionState(
@@ -348,7 +365,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   discard vscode.workspace.onDidChangeConfiguration(configUpdate)
   vscode.debug.onDidStartDebugSession(onStartDebugSession)
     
-
+  setNimDir(state)
   let provider = config.getStr("provider")
 
   if provider == "lsp":
