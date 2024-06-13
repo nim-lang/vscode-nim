@@ -260,4 +260,24 @@ export startLanguageServer
 proc stopLanguageServer(state: ExtensionState) {.async.} =
   await state.client.stop()
 
+type 
+  NimSuggestStatus* = object
+    projectFile*: cstring
+    capabilities*: seq[cstring]
+    version*: cstring
+    path*: cstring
+    port*: int32
+    knownFiles*: seq[cstring]
+    unknownFiles*: seq[cstring]
+  
+  NimLangServerStatus* = object
+    version*: cstring
+    nimsuggestInstances*: seq[NimSuggestStatus]
+
+proc fetchLspStatus*(state: ExtensionState) {.async.} =
+  let client = state.client
+  let response = await client.sendRequest("extension/status", ().toJs())
+  let lspStatus = jsonStringify(response).jsonParse(NimLangServerStatus)
+  state.channel.appendLine(($lspStatus).cstring)
+ 
 export stopLanguageServer

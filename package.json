@@ -169,6 +169,10 @@
                 "command": "nim.restartNimsuggest",
                 "title": "Restarts nimsuggest",
                 "category": "Nim"
+            },
+            {
+                "command": "nim.showNimLangServerStatus",
+                "title": "Show Nim Language Server Status"
             }
         ],
         "menus": {
