@@ -31,7 +31,7 @@ from nimSuggestExec import extensionContext, initNimSuggest,
 from nimUtils import ext, getDirtyFile, outputLine
 from nimProjects import processConfig, configUpdate
 from nimMode import mode
-from nimLsp import startLanguageServer, stopLanguageServer
+import nimLsp
 
 var state: ExtensionState
 var diagnosticCollection {.threadvar.}: VscodeDiagnosticCollection
@@ -341,6 +341,11 @@ proc setNimDir(state: ExtensionState) =
        outputLine(fmt"[info] Using NimDir from nimble dump. NimDir: {state.nimDir}".cstring)
   )
   
+proc showNimLangServerStatus() {.async.} = 
+  console.log "Called showNimLangServerStatus"
+  await fetchLspStatus(state)
+
+
 proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   var config = vscode.workspace.getConfiguration("nim")
   state = ExtensionState(
@@ -360,6 +365,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   vscode.commands.registerCommand("nim.execSelectionInTerminal", execSelectionInTerminal)
   vscode.commands.registerCommand("nim.clearCaches", clearCachesCmd)
   vscode.commands.registerCommand("nim.listCandidateProjects", listCandidateProjects)
+  vscode.commands.registerCommand("nim.showNimLangServerStatus", showNimLangServerStatus)
 
   processConfig(config)
   discard vscode.workspace.onDidChangeConfiguration(configUpdate)
