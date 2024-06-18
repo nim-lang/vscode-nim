@@ -131,6 +131,23 @@
                 ]
             }
         ],
+        "viewsContainers": {
+            "activitybar": [
+              {
+                "id": "nimLangServer",
+                "title": "Nim Language Server",
+                "icon": "images/nim-icon.png"
+              }
+            ]
+          },
+          "views": {
+            "nimLangServer": [
+              {
+                "id": "nimLangServerStatus",
+                "name": "Status"
+              }
+            ]
+          },
         "commands": [
             {
                 "command": "nim.run.file",

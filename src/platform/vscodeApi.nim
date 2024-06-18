@@ -545,6 +545,36 @@ type
     workspace*: VscodeWorkspace
     languages*: VscodeLanguages
     debug*: VSCodeDebug
+  ViewColumn* {.size: sizeof(int32).} = enum
+    one = 1
+    two = 2
+    three = 3
+
+  WebviewPanelOptions* = object
+    enableFindWidget*: bool
+    retainContextWhenHidden*: bool
+
+  WebviewOptions* = object
+    enableScripts*: bool
+    enableForms*: bool
+    enableCommandUris*: bool
+    localResourceRoots*: seq[string]
+    portMapping*: seq[JsObject] # You can define a more specific type for port mapping if needed
+
+  TreeItem* = ref object of JsObject
+    label*: cstring
+    description*: cstring
+    tooltip*: cstring
+    collapsibleState*: int
+    contextValue*: cstring
+    command*: JsObject
+    iconPath*: JsObject
+  
+  EventEmitter* = ref object of JsObject
+    fire*: proc(data: JsObject) 
+  
+  # TreeDataProvider* = ref object of JsObject
+  #   onDidChangeTreeData*: EventEmitter
 
 # static function
 proc newWorkspaceEdit*(vscode: Vscode): VscodeWorkspaceEdit {.
@@ -853,6 +883,21 @@ proc showQuickPick*(
   window: VscodeWindow,
   items: Array[VscodeQuickPickItem]
 ): Future[VscodeQuickPickItem] {.importcpp.}
+proc registerTreeDataProvider*(
+  window: VscodeWindow,
+  viewId: cstring, 
+  treeDataProvider: JsObject): 
+    VscodeDisposable {.importcpp.}
+const
+  TreeItemCollapsibleState_None* = 0
+  TreeItemCollapsibleState_Collapsed* = 1
+  TreeItemCollapsibleState_Expanded* = 2
+
+proc createWebviewPanel*(window: VscodeWindow, viewType: cstring, title: cstring, showOptions: ViewColumn, options: WebviewPanelOptions): JsObject {.importjs: "#.createWebviewPanel(@)".}
+proc createWebviewPanel*(window: VscodeWindow, viewType: cstring, title: cstring, showOptions: JsObject, options: WebviewPanelOptions): JsObject {.importjs: "#.createWebviewPanel(@)".}
+proc newEventEmitter*(vscode: Vscode): EventEmitter {.importcpp: "new #.EventEmitter()".}
+
+proc newTreeItem*(vscode: Vscode, label: cstring, collapsibleState: int = 0): TreeItem {.importcpp: "new #.TreeItem(@)".}
 
 # Terminal
 proc sendText*(term: VscodeTerminal, name: cstring): void {.importcpp.}

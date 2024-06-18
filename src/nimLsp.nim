@@ -5,7 +5,7 @@ import platform/js/[jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs]
 import nimutils
 from std/strformat import fmt
 from tools/nimBinTools import getNimbleExecPath, getBinPath
-from spec import ExtensionState
+import spec
 
 type 
   LSPVersion = tuple[major: int, minor: int, patch: int]
@@ -260,24 +260,114 @@ export startLanguageServer
 proc stopLanguageServer(state: ExtensionState) {.async.} =
   await state.client.stop()
 
-type 
-  NimSuggestStatus* = object
-    projectFile*: cstring
-    capabilities*: seq[cstring]
-    version*: cstring
-    path*: cstring
-    port*: int32
-    knownFiles*: seq[cstring]
-    unknownFiles*: seq[cstring]
-  
-  NimLangServerStatus* = object
-    version*: cstring
-    nimsuggestInstances*: seq[NimSuggestStatus]
 
-proc fetchLspStatus*(state: ExtensionState) {.async.} =
+
+proc getWebviewContent(status: NimLangServerStatus): cstring =
+  result = &"""
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nim Language Server Status</title>
+    <style>
+      body {{
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }}
+      .status {{
+        margin-bottom: 20px;
+      }}
+      .status-item {{
+        margin-bottom: 10px;
+      }}
+      .status-header {{
+        font-weight: bold;
+        margin-bottom: 5px;
+      }}
+    </style>
+  </head>
+  <body>
+    <div class="status">
+      <div class="status-header">Version: {status.version}</div>
+      <div class="status-header">Open Files: {status.openFiles.join(", ")}</div>
+      <div class="status-header">Nim Suggest Instances:</div>
+      <ul>
+       TODO
+      </ul>
+    </div>
+  </body>
+  </html>
+  """
+
+proc displayStatusInWebview(status: NimLangServerStatus)  =
+  let panel = vscode.window.createWebviewPanel("nimLangServerStatus", "Nim Language Server Status", ViewColumn.one, WebviewPanelOptions())
+  panel.webview.html = getWebviewContent(status)
+ 
+proc fetchLspStatus*(state: ExtensionState): Future[NimLangServerStatus] {.async.} =
   let client = state.client
   let response = await client.sendRequest("extension/status", ().toJs())
   let lspStatus = jsonStringify(response).jsonParse(NimLangServerStatus)
   state.channel.appendLine(($lspStatus).cstring)
- 
+  return lspStatus
+
+proc newStatusItem*(label: cstring, description: cstring = "", tooltip: cstring = "", collapsibleState: int = 0, instance: Option[NimSuggestStatus] = none(NimSuggestStatus) ): StatusItem =
+  let statusItem = vscode.newTreeItem(label, collapsibleState)
+  statusItem.description = description
+  statusItem.tooltip = tooltip
+  statusItem.instance = instance
+  cast[StatusItem](statusItem)
+
+proc getChildrenImpl(self: NimLangServerStatusProvider, element: StatusItem = nil): seq[StatusItem] =
+  if self.status.isNone:
+    #TODO add a refresh button
+    return @[newStatusItem("Run the show nimlangserver Status command", "", "", TreeItemCollapsibleState_None)]
+
+  if element.isNil:
+    # Root items
+    return @[
+      newStatusItem("Version", self.status.get.version),
+      newStatusItem("Nim Suggest Instances", "", "", TreeItemCollapsibleState_Collapsed)
+    ] & self.status.get.openFiles.mapIt(newStatusItem("OpenFile:", it))
+  elif element.label == "Nim Suggest Instances":
+    # Children of Nim Suggest Instances
+    return self.status.get.nimsuggestInstances.mapIt(newStatusItem(it.projectFile, "", "", TreeItemCollapsibleState_Collapsed, some it))
+  elif not element.instance.isNone:
+    # Children of a specific instance
+    let instance = element.instance.get
+    return @[
+      newStatusItem("Project File", instance.projectFile),
+      newStatusItem("Capabilities", instance.capabilities.join(", ").cstring),
+      newStatusItem("Version", instance.version),
+      newStatusItem("Path", instance.path),
+      newStatusItem("Port", cstring($instance.port)),
+      newStatusItem("Open Files", instance.openFiles.join(", ").cstring),
+      newStatusItem("Unknown Files", instance.unknownFiles.join(", ").cstring)
+    ]
+
+  return @[]
+
+proc getTreeItemImpl(self: NimLangServerStatusProvider, element: TreeItem): Future[TreeItem] {.async.}=
+  return element
+
+proc newNimLangServerStatusProvider*(): NimLangServerStatusProvider =
+  let provider = cast[NimLangServerStatusProvider](newJsObject())
+  # provider.onDidChangeTreeData = proc(element: JsObject) = 
+  let emitter = vscode.newEventEmitter()
+  provider.emitter = emitter
+  provider.onDidChangeTreeData = emitter.event
+  
+
+  provider.status = none(NimLangServerStatus)
+  provider.getTreeItem = proc (element: TreeItem): Future[TreeItem]  =
+    getTreeItemImpl(provider, element)
+  provider.getChildren = proc (element: StatusItem): seq[StatusItem] = 
+     getChildrenImpl(provider, element)
+  provider
+
+proc refresh*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) =
+  self.status = some(lspStatus)
+  self.emitter.fire(nil)
+
+
 export stopLanguageServer
