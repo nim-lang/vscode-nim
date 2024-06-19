@@ -6,7 +6,7 @@ when not defined(js):
 import platform/vscodeApi
 import platform/js/[jsre, jsString, jsNodeFs, jsNodePath, jsNodeCp]
 import tools/nimBinTools
-import std/[strformat, jsconsole, strutils]
+import std/[strformat, jsconsole, strutils, options]
 from std/strformat import fmt
 from std/os import `/`
 import spec
@@ -342,9 +342,8 @@ proc setNimDir(state: ExtensionState) =
   )
   
 proc showNimLangServerStatus() {.async.} = 
-  console.log "Called showNimLangServerStatus"
-  await fetchLspStatus(state)
-
+  let lspStatus = await fetchLspStatus(state)
+  state.statusProvider.refresh(lspStatus)
 
 proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   var config = vscode.workspace.getConfiguration("nim")
@@ -376,6 +375,9 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
 
   if provider == "lsp":
     await startLanguageServer(true, state)
+    state.statusProvider = newNimLangServerStatusProvider()
+    discard vscode.window.registerTreeDataProvider("nimLangServerStatus", state.statusProvider)
+
   elif provider == "nimsuggest" and config.getBool("enableNimsuggest"):
     initNimSuggest()
     ctx.subscriptions.add(vscode.languages.registerCompletionItemProvider(mode,

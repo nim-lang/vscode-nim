@@ -1,9 +1,7 @@
 ## Types for extension state, this should either get fleshed out or removed
+import std/options
+import platform/vscodeApi
 
-from platform/vscodeApi import VscodeExtensionContext,
-    VscodeWorkspaceConfiguration,
-    VscodeOutputChannel,
-    VscodeWorkspaceFolder
 
 from platform/languageClientApi import VscodeLanguageClient
 
@@ -12,6 +10,27 @@ type
   Timestamp* = cint
   NimsuggestId* = cstring
 
+  NimSuggestStatus* = object
+    projectFile*: cstring
+    capabilities*: seq[cstring]
+    version*: cstring
+    path*: cstring
+    port*: int32
+    openFiles*: seq[cstring]
+    unknownFiles*: seq[cstring]
+
+  NimLangServerStatus* = object
+    version*: cstring
+    nimsuggestInstances*: seq[NimSuggestStatus]
+    openFiles*: seq[cstring]
+
+  StatusItem* = ref object of TreeItem
+    instance*: Option[NimSuggestStatus]
+
+  NimLangServerStatusProvider* = ref object of JsObject
+    status*: Option[NimLangServerStatus]
+    # onDidChangeTreeData*: EventEmitter
+
   ExtensionState* = ref object
     ctx*: VscodeExtensionContext
     config*: VscodeWorkspaceConfiguration
@@ -19,6 +38,7 @@ type
     client*: VscodeLanguageClient
     installPerformed*: bool
     nimDir*: string # Nim used directory. Extracted on activation from nimble. When it's "", means nim in the PATH is used.
+    statusProvider*: NimLangServerStatusProvider
 
 # type
 #   SolutionKind* {.pure.} = enum
