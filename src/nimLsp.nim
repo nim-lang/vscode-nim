@@ -200,6 +200,9 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: 
   global.setTimeout(onLspTimeout, 1000)
   process = cp.exec((nimlangserver & " --version"), ExecOptions(), onExec)    
 
+
+proc refresh*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) 
+
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let (rawPath, lspPathKind) = getLspPath(state)
   if lspPathKind == lspPathInvalid:
@@ -252,15 +255,20 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
        cstring("Nim Language Server"),
        serverOptions,
        clientOptions)
+
     await state.client.start()
+    
+    state.client.onNotification("extension/statusUpdate", proc (params: JsObject) =
+      let lspStatus = jsonStringify(params).jsonParse(NimLangServerStatus)
+      refresh(state.statusProvider, lspStatus)
+    )
+
     outputLine("Nim Language Server started")
 
 export startLanguageServer
 
 proc stopLanguageServer(state: ExtensionState) {.async.} =
   await state.client.stop()
-
-
 
 proc getWebviewContent(status: NimLangServerStatus): cstring =
   result = &"""
@@ -301,7 +309,7 @@ proc getWebviewContent(status: NimLangServerStatus): cstring =
   """
 
 proc displayStatusInWebview(status: NimLangServerStatus)  =
-  let panel = vscode.window.createWebviewPanel("nimLangServerStatus", "Nim Language Server Status", ViewColumn.one, WebviewPanelOptions())
+  let panel = vscode.window.createWebviewPanel("nim", "Nim", ViewColumn.one, WebviewPanelOptions())
   panel.webview.html = getWebviewContent(status)
  
 proc fetchLspStatus*(state: ExtensionState): Future[NimLangServerStatus] {.async.} =
@@ -320,16 +328,15 @@ proc newStatusItem*(label: cstring, description: cstring = "", tooltip: cstring 
 
 proc getChildrenImpl(self: NimLangServerStatusProvider, element: StatusItem = nil): seq[StatusItem] =
   if self.status.isNone:
-    #TODO add a refresh button
-    return @[newStatusItem("Run the show nimlangserver Status command", "", "", TreeItemCollapsibleState_None)]
+    return @[newStatusItem("Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None)]
 
   if element.isNil:
     # Root items
     return @[
       newStatusItem("Version", self.status.get.version),
-      newStatusItem("Nim Suggest Instances", "", "", TreeItemCollapsibleState_Collapsed)
+      newStatusItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Collapsed)
     ] & self.status.get.openFiles.mapIt(newStatusItem("OpenFile:", it))
-  elif element.label == "Nim Suggest Instances":
+  elif element.label == "NimSuggest Instances":
     # Children of Nim Suggest Instances
     return self.status.get.nimsuggestInstances.mapIt(newStatusItem(it.projectFile, "", "", TreeItemCollapsibleState_Collapsed, some it))
   elif not element.instance.isNone:

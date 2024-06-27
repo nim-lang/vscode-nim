@@ -44,5 +44,6 @@ proc newLanguageClient*(
 proc start*(s: VscodeLanguageClient): Promise[void] {.importcpp: "#.start()".}
 proc stop*(s: VscodeLanguageClient): Promise[void] {.importcpp: "#.stop()".}
 proc sendRequest*(s: VscodeLanguageClient, m: cstring, params: JsObject): Future[JsObject] {.importcpp: "#.sendRequest(@)".}
+proc onNotification*(s: VscodeLanguageClient, m: cstring, cb: proc (data: JsObject)) {.importcpp: "#.onNotification(@)".}
 
 var vscodeLanguageClient*: VscodeLanguageClient = require("vscode-languageclient/node").to(VscodeLanguageClient)

@@ -376,7 +376,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   if provider == "lsp":
     await startLanguageServer(true, state)
     state.statusProvider = newNimLangServerStatusProvider()
-    discard vscode.window.registerTreeDataProvider("nimLangServerStatus", state.statusProvider)
+    discard vscode.window.registerTreeDataProvider("nim", state.statusProvider)
 
   elif provider == "nimsuggest" and config.getBool("enableNimsuggest"):
     initNimSuggest()
