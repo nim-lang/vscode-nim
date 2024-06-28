@@ -134,17 +134,17 @@
         "viewsContainers": {
             "activitybar": [
               {
-                "id": "nimLangServer",
-                "title": "Nim Language Server",
-                "icon": "images/nim-icon.png"
+                "id": "nim",
+                "title": "Nim",
+                "icon": "images/nim_icon.png"
               }
             ]
           },
           "views": {
-            "nimLangServer": [
+            "nim": [
               {
-                "id": "nimLangServerStatus",
-                "name": "Status"
+                "id": "nim",
+                "name": "Nim"
               }
             ]
           },
