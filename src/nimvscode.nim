@@ -365,6 +365,11 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   vscode.commands.registerCommand("nim.clearCaches", clearCachesCmd)
   vscode.commands.registerCommand("nim.listCandidateProjects", listCandidateProjects)
   vscode.commands.registerCommand("nim.showNimLangServerStatus", showNimLangServerStatus)
+  vscode.commands.registerCommand("nim.showNotification", onShowNotification)
+  vscode.commands.registerCommand("nim.onDeleteNotification", onDeleteNotification)
+  vscode.commands.registerCommand("nim.onClearAllNotifications", onClearAllNotifications)
+
+
 
   processConfig(config)
   discard vscode.workspace.onDidChangeConfiguration(configUpdate)

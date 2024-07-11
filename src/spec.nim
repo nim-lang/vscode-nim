@@ -1,5 +1,5 @@
 ## Types for extension state, this should either get fleshed out or removed
-import std/options
+import std/[options, times]
 import platform/vscodeApi
 
 
@@ -24,11 +24,20 @@ type
     nimsuggestInstances*: seq[NimSuggestStatus]
     openFiles*: seq[cstring]
 
-  StatusItem* = ref object of TreeItem
+  LspItem* = ref object of TreeItem
     instance*: Option[NimSuggestStatus]
+    notification*: Option[Notification]
+
+  Notification* = object
+    message*: cstring
+    kind*: cstring
+    id*: cstring
+    date*: DateTime
 
   NimLangServerStatusProvider* = ref object of JsObject
     status*: Option[NimLangServerStatus]
+    notifications*: seq[Notification] 
+    lastId*: int32 
     # onDidChangeTreeData*: EventEmitter
 
   ExtensionState* = ref object

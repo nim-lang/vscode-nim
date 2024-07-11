@@ -1,4 +1,4 @@
-import std/[jsconsole, strutils, jsfetch, asyncjs, sugar, sequtils, options, strformat]
+import std/[jsconsole, strutils, jsfetch, asyncjs, sugar, sequtils, options, strformat, times]
 import platform/[vscodeApi, languageClientApi]
 
 import platform/js/[jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs]
@@ -201,7 +201,8 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: 
   process = cp.exec((nimlangserver & " --version"), ExecOptions(), onExec)    
 
 
-proc refresh*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) 
+proc refreshLspStatus*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) 
+proc refreshNotifications*(self: NimLangServerStatusProvider, notifications: seq[Notification])
 
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let (rawPath, lspPathKind) = getLspPath(state)
@@ -260,8 +261,49 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
     
     state.client.onNotification("extension/statusUpdate", proc (params: JsObject) =
       let lspStatus = jsonStringify(params).jsonParse(NimLangServerStatus)
-      refresh(state.statusProvider, lspStatus)
+      outputLine("Received status update " & jsonStringify(params))
+      refreshLspStatus(state.statusProvider, lspStatus)
     )
+
+    type 
+      Message = object of JsObject
+        message: cstring
+        `type`: MessageType
+      
+      MessageType {.pure.} = enum
+        Error = 1,
+        Warning = 2,
+        Info = 3,
+        Log = 4,
+        Debug = 5
+
+    func messageTypToStr(typ: MessageType): cstring  = 
+      case typ:
+      of Error: "error"
+      of Warning: "warning"
+      else: "info"
+
+    state.client.onNotification("window/showMessage", proc (params: JsObject) =
+      let message = jsonStringify(params).jsonParse(Message)
+      inc state.statusProvider.lastId
+      let id = $state.statusProvider.lastId
+      let notification = Notification(
+        message: message.message, 
+        kind: messageTypToStr(message.`type`), 
+        id: id.cstring,
+        date: now()
+      )
+      let nots = state.statusProvider.notifications & @[notification]
+      refreshNotifications(state.statusProvider, nots)
+    )
+    let expiredTime = state.config.getInt("notificationTimeout")
+    if expiredTime > 0:
+      global.setInterval(
+        proc() = 
+          let notifications = state.statusProvider.notifications.filterIt(it.date > now() - expiredTime.seconds)
+          refreshNotifications(state.statusProvider, notifications),
+        1000 #refresh time
+      )
 
     outputLine("Nim Language Server started")
 
@@ -319,40 +361,118 @@ proc fetchLspStatus*(state: ExtensionState): Future[NimLangServerStatus] {.async
   state.channel.appendLine(($lspStatus).cstring)
   return lspStatus
 
-proc newStatusItem*(label: cstring, description: cstring = "", tooltip: cstring = "", collapsibleState: int = 0, instance: Option[NimSuggestStatus] = none(NimSuggestStatus) ): StatusItem =
+proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "", collapsibleState: int = 0, instance: Option[NimSuggestStatus] = none(NimSuggestStatus), notification: Option[Notification] = none(Notification) ): LspItem =
   let statusItem = vscode.newTreeItem(label, collapsibleState)
   statusItem.description = description
   statusItem.tooltip = tooltip
   statusItem.instance = instance
-  cast[StatusItem](statusItem)
+  statusItem.notification = notification
+  cast[LspItem](statusItem)
 
-proc getChildrenImpl(self: NimLangServerStatusProvider, element: StatusItem = nil): seq[StatusItem] =
-  if self.status.isNone:
-    return @[newStatusItem("Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None)]
 
-  if element.isNil:
-    # Root items
-    return @[
-      newStatusItem("Version", self.status.get.version),
-      newStatusItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Collapsed)
-    ] & self.status.get.openFiles.mapIt(newStatusItem("OpenFile:", it))
-  elif element.label == "NimSuggest Instances":
-    # Children of Nim Suggest Instances
-    return self.status.get.nimsuggestInstances.mapIt(newStatusItem(it.projectFile, "", "", TreeItemCollapsibleState_Collapsed, some it))
-  elif not element.instance.isNone:
-    # Children of a specific instance
-    let instance = element.instance.get
-    return @[
-      newStatusItem("Project File", instance.projectFile),
-      newStatusItem("Capabilities", instance.capabilities.join(", ").cstring),
-      newStatusItem("Version", instance.version),
-      newStatusItem("Path", instance.path),
-      newStatusItem("Port", cstring($instance.port)),
-      newStatusItem("Open Files", instance.openFiles.join(", ").cstring),
-      newStatusItem("Unknown Files", instance.unknownFiles.join(", ").cstring)
-    ]
+proc onShowNotification*(args: JsObject) =
+  let message = args.to(cstring)
+  vscode.window.showInformationMessage("Details", VscodeMessageOptions(detail: args.to(cstring), modal: true))
 
-  return @[]
+proc onDeleteNotification*(args: JsObject) =
+  let id = args.to(cstring)
+  let state = nimUtils.ext 
+  let notifications = state.statusProvider.notifications.filterIt(it.id != id)
+  refreshNotifications(state.statusProvider, notifications)
+
+proc onClearAllNotifications*() =
+  refreshNotifications(nimUtils.ext.statusProvider, @[])
+
+proc newNotificationItem*(notification: Notification): LspItem =
+  let item = vscode.newTreeItem("Notification", TreeItemCollapsibleState_Collapsed)
+  item.label = notification.message
+  item.notification = some(notification)
+  # item.context.isNotification = true
+  item.command = newJsObject()
+  item.command.command = "nim.showNotification".cstring
+  item.command.title = "Show Notification".cstring
+  item.command.arguments = @[notification.message.toJs()]
+  item.tooltip = notification.message
+  item.iconPath = vscode.themeIcon(notification.kind, vscode.themeColor("notificationsInfoIcon.foreground"))
+  cast[LspItem](item)
+
+proc isNotificationItem(item: LspItem): bool = 
+  not item.notification.isUndefined and item.notification.isSome
+
+proc notificationActionItems(lspItem: LspItem): seq[LspItem] =
+  #Returns a child with the detail clickable and a child for deleting it
+  let notification = lspItem.notification.get()
+  let item = vscode.newTreeItem("Details", TreeItemCollapsibleState_None)
+  # item.title = "Details"
+  item.command = newJsObject()
+  item.command.command = "nim.showNotification".cstring
+  item.command.title = "Show Notification".cstring
+  item.command.arguments = @[notification.message.toJs()]
+  item.iconPath = vscode.themeIcon("selection", vscode.themeColor("notificationsInfoIcon.foreground"))
+  result.add cast[LspItem](item)
+
+  let item2 = vscode.newTreeItem("Delete", TreeItemCollapsibleState_None)
+  # item2.title = "Delete"
+  item2.command = newJsObject()
+  item2.command.command = "nim.onDeleteNotification".cstring
+  item2.command.title = "Delete Notification".cstring
+  item2.iconPath = vscode.themeIcon("trash", vscode.themeColor("notificationsErrorIcon.foreground"))
+  item2.command.arguments = @[notification.id.toJs()]
+  result.add cast[LspItem](item2)
+
+
+proc globalNotificationActionItems(): seq[LspItem] = 
+  if nimUtils.ext.statusProvider.notifications.len == 0:
+    return @[]
+  let item = vscode.newTreeItem("Clear All", TreeItemCollapsibleState_None)
+  item.command = newJsObject()
+  item.command.command = "nim.onClearAllNotifications".cstring
+  item.command.title = "Clear All Notifications".cstring
+  item.iconPath = vscode.themeIcon("trash", vscode.themeColor("notificationsErrorIcon.foreground"))
+  @[cast[LspItem](item)]
+
+#[
+  - Root
+    - Notifications
+    - LSP Status
+
+]#
+
+proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil): seq[LspItem] =
+  if element.isNil: #Root
+      @[
+        newLspItem("LSP Status", "", "", TreeItemCollapsibleState_Collapsed),
+        newLspItem("LSP Notifications", "", "", TreeItemCollapsibleState_Expanded)
+      ]
+  elif element.label == "LSP Notifications":
+    return globalNotificationActionItems() & self.notifications.mapIt(newNotificationItem(it))
+  elif element.isNotificationItem:
+    return notificationActionItems(element)
+  else:
+    if self.status.isNone:
+      return @[newLspItem("Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None)]
+    if element.label == "LSP Status":
+      return @[
+        newLspItem("Version", self.status.get.version),
+        newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Collapsed)
+      ] & self.status.get.openFiles.mapIt(newLspItem("OpenFile:", it))
+    elif element.label == "NimSuggest Instances":
+      # Children of Nim Suggest Instances
+      return self.status.get.nimsuggestInstances.mapIt(newLspItem(it.projectFile, "", "", TreeItemCollapsibleState_Collapsed, some it))
+    elif not element.instance.isNone:
+      # Children of a specific instance
+      let instance = element.instance.get
+      return @[
+        newLspItem("Project File", instance.projectFile),
+        newLspItem("Capabilities", instance.capabilities.join(", ").cstring),
+        newLspItem("Version", instance.version),
+        newLspItem("Path", instance.path),
+        newLspItem("Port", cstring($instance.port)),
+        newLspItem("Open Files", instance.openFiles.join(", ").cstring),
+        newLspItem("Unknown Files", instance.unknownFiles.join(", ").cstring),
+        newLspItem("Info:", "orem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.".cstring)    ]
+
+    return @[]
 
 proc getTreeItemImpl(self: NimLangServerStatusProvider, element: TreeItem): Future[TreeItem] {.async.}=
   return element
@@ -363,18 +483,21 @@ proc newNimLangServerStatusProvider*(): NimLangServerStatusProvider =
   let emitter = vscode.newEventEmitter()
   provider.emitter = emitter
   provider.onDidChangeTreeData = emitter.event
-  
-
   provider.status = none(NimLangServerStatus)
+  provider.notifications = @[]
+  provider.lastId = 1
   provider.getTreeItem = proc (element: TreeItem): Future[TreeItem]  =
     getTreeItemImpl(provider, element)
-  provider.getChildren = proc (element: StatusItem): seq[StatusItem] = 
+  provider.getChildren = proc (element: LspItem): seq[LspItem] = 
      getChildrenImpl(provider, element)
   provider
 
-proc refresh*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) =
+proc refreshLspStatus*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) =
   self.status = some(lspStatus)
   self.emitter.fire(nil)
 
+proc refreshNotifications*(self: NimLangServerStatusProvider, notifications: seq[Notification]) =
+  self.notifications = notifications
+  self.emitter.fire(nil)
 
 export stopLanguageServer

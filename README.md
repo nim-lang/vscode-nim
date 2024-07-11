@@ -50,6 +50,7 @@ The following Visual Studio Code settings are available for the Nim extension.  
 * `nim.lintOnSave` - perform the project check for errors on save
 * `nim.project` - optional array of projects file, if nim.project is not defined then all nim files will be used as separate project
 * `nim.licenseString` - optional license text that will be inserted on nim file creation
+* `nim.notificationTimeout` - optional the timeout in seconds for the Nim language server notifications. Use 0 to disable the timeout.
 
 #### Example
 
