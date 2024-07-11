@@ -650,6 +650,10 @@ proc newWorkspaceFolderLike*(uri: VscodeUri, name: cstring,
   index: cint): VscodeWorkspaceFolder {.
   importcpp: "({uri:#, name:#, index:#})".}
 
+#https://code.visualstudio.com/api/references/theme-color#notification-colors
+proc themeColor*(vscode: Vscode, color: cstring): JsObject {.importjs: "new #.ThemeColor(#)" .}
+# https://code.visualstudio.com/api/references/icons-in-labels#icon-listing
+proc themeIcon*(vscode: Vscode, name: cstring, color: JsObject = nil): JsObject {.importjs: "new #.ThemeIcon(@)".}
 # Command
 proc registerCommand*(
   cmds: VscodeCommands,
