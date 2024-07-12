@@ -1,5 +1,17 @@
 # ChangeLog
 
+## 1.0.0 (12 Jul 2024)
+
+* improves `emit` syntax highlighting  
+* improves the installation process of the nimlangserver
+* install nimlangserver local to the extension when no found in path
+* autoupdates the local nimlangserver when a new release is found
+* fixes compilation issues with Nim 2.0
+* utilises `nimble dump` for running and debugging the current file
+* implements `show nimlangserver status` command
+* new panel with information in real time about the `nimlangserver` status
+* add `nimlangserver` notifications to the new panel 
+
 ## 0.9.0 (5 Feb 2024)
 * added prettifier for Strings when debugging
 * added 'Debug Selected this file command`
