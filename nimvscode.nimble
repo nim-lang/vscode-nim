@@ -1,6 +1,6 @@
 # Package
 
-version     = "0.9.0"
+version     = "1.0.0"
 author      = "saem"
 description = "Nim language support for Visual Studio Code written in Nim"
 license     = "MIT"
