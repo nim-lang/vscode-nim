@@ -393,7 +393,8 @@ proc newNotificationItem*(notification: Notification): LspItem =
   item.command.title = "Show Notification".cstring
   item.command.arguments = @[notification.message.toJs()]
   item.tooltip = notification.message
-  item.iconPath = vscode.themeIcon(notification.kind, vscode.themeColor("notificationsInfoIcon.foreground"))
+  let color = fmt"notifications{capitalizeAscii($notification.kind)}Icon.foreground".cstring
+  item.iconPath = vscode.themeIcon(notification.kind, vscode.themeColor(color))
   cast[LspItem](item)
 
 proc isNotificationItem(item: LspItem): bool = 
