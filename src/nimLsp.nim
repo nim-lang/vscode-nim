@@ -470,7 +470,8 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
         newLspItem("Path", instance.path),
         newLspItem("Port", cstring($instance.port)),
         newLspItem("Open Files", instance.openFiles.join(", ").cstring),
-        newLspItem("Unknown Files", instance.unknownFiles.join(", ").cstring),
+        newLspItem("Unknown Files", instance.unknownFiles.join(", ").cstring)
+      ]
 
     return @[]
 
