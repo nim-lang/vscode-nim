@@ -243,8 +243,8 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
 
     let
       serverOptions = ServerOptions{
-        run: Executable{command: nimlangserver, transport: TransportKind.stdio },
-        debug: Executable{command: nimlangserver, transport: TransportKind.stdio }
+        run: Executable{command: nimlangserver, transport: TransportKind.stdio, options: ExecutableOptions(shell: true)},
+        debug: Executable{command: nimlangserver, transport: TransportKind.stdio, options: ExecutableOptions(shell: true)}
       }
       clientOptions = LanguageClientOptions{
         documentSelector: @[DocumentFilter(scheme: cstring("file"),

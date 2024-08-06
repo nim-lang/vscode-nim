@@ -15,10 +15,15 @@ type
     pipe = 2,
     socket = 3
 
+  ExecutableOptions* = ref ExecutableOptionsObj
+  ExecutableOptionsObj {.importc.} = object of JsObject
+    shell*: bool
+
   Executable* = ref ExecutableObj
   ExecutableObj {.importc.} = object of JsObject
     command*: cstring
     transport*: TransportKind
+    options*: ExecutableOptions
 
   ServerOptions* = ref ServerOptionsObj
   ServerOptionsObj* {.importc.} = object of JsObject
