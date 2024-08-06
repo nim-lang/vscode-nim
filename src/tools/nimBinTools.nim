@@ -11,10 +11,8 @@ proc getBinPath*(tool: cstring): cstring =
   if binPathsCache[tool].toJs().to(bool): return binPathsCache[tool]
   if not process.env["PATH"].isNil():
     # add support for choosenim
-    process.env["PATH"] = path.join(
-      process.env["PATH"] & path.delimiter & process.env["HOME"],
-      ".nimble",
-      "bin")
+    process.env["PATH"] = path.join(process.env["HOME"], ".nimble", "bin") &
+      path.delimiter & process.env["PATH"]
     if process.platform == "win32":
       # USERPROFILE is the standard equivalent of HOME on windows.
       process.env["PATH"] = path.join(
