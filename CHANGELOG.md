@@ -1,5 +1,8 @@
 # ChangeLog
 
+## 1.0.1 (8 Ago 2024)
+* Fixes a vscode client lsp issue in newer node versions for Windows where it couldnt start the lsp server due to mitigation patch.
+
 ## 1.0.0 (12 Jul 2024)
 
 * improves `emit` syntax highlighting  
