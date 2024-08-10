@@ -10,15 +10,13 @@ var binPathsCache = newMap[cstring, cstring]()
 proc getBinPath*(tool: cstring): cstring =
   if binPathsCache[tool].toJs().to(bool): return binPathsCache[tool]
   if not process.env["PATH"].isNil():
+    # USERPROFILE is the standard equivalent of HOME on windows.
+    let userHomeVarName = if process.platform == "win32": "USERPROFILE" else: "HOME"
+
     # add support for choosenim
-    process.env["PATH"] = path.join(process.env["HOME"], ".nimble", "bin") &
+    process.env["PATH"] = path.join(process.env[userHomeVarName], ".nimble", "bin") &
       path.delimiter & process.env["PATH"]
-    if process.platform == "win32":
-      # USERPROFILE is the standard equivalent of HOME on windows.
-      process.env["PATH"] = path.join(
-        process.env["PATH"] & path.delimiter & process.env["USERPROFILE"],
-        ".nimble",
-        "bin")
+
     var pathParts = process.env["PATH"].split(path.delimiter)
     var endings = if process.platform == "win32": @[".exe", ".cmd", ""]
                   else: @[""]
