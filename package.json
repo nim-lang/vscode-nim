@@ -2,7 +2,7 @@
     "name": "nimlang",
     "displayName": "nim-lang.org",
     "description": "Nim extension maintained by the Nim compiler team.",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "publisher": "NimLang",
     "author": {
         "name": "NimLang"
