@@ -3,22 +3,26 @@
 import platform/js/[jsNode, jsNodePath, jsString, jsNodeFs, jsNodeCp]
 
 import std/jsffi
-from std/sequtils import mapIt, foldl, filterIt
+from std/sequtils import mapIt, foldl, filterIt, concat
 import ../[spec, nimUtils]
 var binPathsCache = newMap[cstring, cstring]()
 
-proc getBinPath*(tool: cstring): cstring =
+proc getBinPath*(tool: cstring, initialSearchPaths: openArray[cstring] = []): cstring =
   if binPathsCache[tool].toJs().to(bool): return binPathsCache[tool]
   if not process.env["PATH"].isNil():
     # USERPROFILE is the standard equivalent of HOME on windows.
     let userHomeVarName = if process.platform == "win32": "USERPROFILE" else: "HOME"
 
     # add support for choosenim
-    process.env["PATH"] = path.join(process.env[userHomeVarName], ".nimble", "bin") &
+    let fullEnvPath = path.join(process.env[userHomeVarName], ".nimble", "bin") &
       path.delimiter & process.env["PATH"]
 
-    var pathParts = process.env["PATH"].split(path.delimiter)
-    var endings = if process.platform == "win32": @[".exe", ".cmd", ""]
+    let pathParts: seq[cstring] = concat(
+      @initialSearchPaths,
+      fullEnvPath.split(path.delimiter)
+    )
+
+    let endings = if process.platform == "win32": @[".exe", ".cmd", ""]
                   else: @[""]
 
     let paths = pathParts.mapIt(
@@ -55,11 +59,13 @@ proc getBinPath*(tool: cstring): cstring =
 proc getNimExecPath*(executable: cstring = "nim"): cstring =
   ## returns the path to the an executable by name, defaults to nim, returns an
   ## empty string in case it wasn't found.
-  if executable == "nim":
-    if ext.nimDir != "":
-      return ext.nimDir #use the nimDir from nimble when is set instead of the path
+  var initialPaths = newSeq[cstring]()
 
-  result = getBinPath(executable)
+  if executable == "nim" and ext.nimDir != "":
+      # use the nimDir from nimble as the initial search path when it's set.
+      initialPaths.add(ext.nimDir.cstring)
+
+  result = getBinPath(executable, initialPaths)
   if result.isNil():
     result = ""
 
