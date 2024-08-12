@@ -34,6 +34,15 @@
             "body": "if ${1:expression}:\n\t$0",
             "description": "A run-time conditional statement"
         },
+        "elif": {
+            "prefix": "elif",
+            "body": "elif ${1:expression}:\n\t$0"
+        },
+        "when": {
+            "prefix": "when",
+            "body": "when ${1:expression}:\n\t$0",
+            "description": "A compile-time conditional statement"
+        },
         "for": {
             "prefix": "for",
             "body": "for ${1:index} in ${2:sequence}:\n\t$0"
@@ -79,6 +88,33 @@
         "pragma": {
             "prefix": "pr",
             "body": "{.${1:name}.}"
+        },
+        "type": {
+            "prefix": "type",
+            "body": "type ${1:name} = $0"
+        },
+        "object": {
+            "prefix": "object",
+            "body": "object\n\t${1:field_name}: ${2:field_type}$0"
+        },
+        "tuple": {
+            "prefix": "tuple",
+            "body": "tuple\n\t${1:field_name}: ${2:field_type}$0"
+        },
+        "enum": {
+            "prefix": "= enum",
+            "body": "= enum $0",
+            "description": "Define a regular enumeration type"
+        },
+        "enum (pure)": {
+            "prefix": "= enum",
+            "body": "{.pure.} = enum $0",
+            "description": "Define a 'pure' enumeration type"
+        },
+        "pure enum pragma": {
+            "prefix": "{.pure.}",
+            "body": "{.pure.} = enum $0",
+            "description": "Define a 'pure' enumeration type"
         }
     }
 }
