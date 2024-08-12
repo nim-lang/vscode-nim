@@ -2,15 +2,18 @@
     ".source.nim": {
         "procedure": {
             "prefix": "proc",
-            "body": "proc ${1:name}(${2:arguments}): ${3:return type} =\n\t$0"
+            "body": "proc ${1:name}(${2:arguments}): ${3:return type} =\n\t$0",
+            "description": "A procedure that might have side effects and can access global state"
         },
         "function": {
             "prefix": "func",
-            "body": "func ${1:name}(${2:arguments}): ${3:return type} =\n\t$0"
+            "body": "func ${1:name}(${2:arguments}): ${3:return type} =\n\t$0",
+            "description": "A function is a procedure that cannot have side effects nor access non-const global state"
         },
         "method": {
             "prefix": "method",
-            "body": "method ${1:name}(${2:arguments}): ${3:return type} =\n\t$0"
+            "body": "method ${1:name}(${2:arguments}): ${3:return type} =\n\t$0",
+            "description": "A method is a procedure that is dynamically dispatched"
         },
         "iterator": {
             "prefix": "iterator",
@@ -18,15 +21,18 @@
         },
         "array": {
             "prefix": "array",
-            "body": "array[${1:length}, ${2:type}]$0"
+            "body": "array[${1:length}, ${2:type}]$0",
+            "descripton": "A fixed length container"
         },
         "sequence": {
             "prefix": "seq",
-            "body": "seq[${1:type}]$0"
+            "body": "seq[${1:type}]$0",
+            "descripton": "A dynamic length container"
         },
         "if": {
             "prefix": "if",
-            "body": "if ${1:expression}:\n\t$0"
+            "body": "if ${1:expression}:\n\t$0",
+            "description": "A run-time conditional statement"
         },
         "for": {
             "prefix": "for",
@@ -62,11 +68,13 @@
         },
         "template": {
             "prefix": "template",
-            "body": "template ${1:name}(${2:arguments}): ${3:return type} =\n\t$0"
+            "body": "template ${1:name}(${2:arguments}): ${3:return type} =\n\t$0",
+            "description": "A simple substitution mechanism that generates code at compile-time"
         },
         "macro": {
             "prefix": "macro",
-            "body": "macro ${1:name}(${2:arguments}): ${3:return type} =\n\t$0"
+            "body": "macro ${1:name}(${2:arguments}): ${3:return type} =\n\t$0",
+            "description": "A function that is executed at compile-time and transforms a Nim syntax tree into a different tree"
         },
         "pragma": {
             "prefix": "pr",
