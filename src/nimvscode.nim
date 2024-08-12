@@ -7,7 +7,6 @@ import platform/vscodeApi
 import platform/js/[jsre, jsString, jsNodeFs, jsNodePath, jsNodeCp]
 import tools/nimBinTools
 import std/[strformat, jsconsole, strutils, options]
-from std/strformat import fmt
 from std/os import `/`
 import spec
 import nimRename,
@@ -300,7 +299,7 @@ proc debugFile() =
     typ = config.getStr("debug.type")
     editor = vscode.window.activeTextEditor
     filename = editor.document.fileName
-    filePath  = path.join(outputDirConfig, path.basename(editor.document.fileName).replace(".nim", ""))
+    filePath = path.join(outputDirConfig, path.basename(editor.document.fileName).replace(".nim", ""))
     workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri)
   #compiles the file
   runFile(ignore = false, isDebug = true)
