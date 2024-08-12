@@ -115,6 +115,26 @@
             "prefix": "{.pure.}",
             "body": "{.pure.} = enum $0",
             "description": "Define a 'pure' enumeration type"
+        },
+        "echo": {
+            "prefix": "echo",
+            "body": "echo ",
+            "description": "Echo text to the console (cannot be used inside functions)"
+        },
+        "echo a variable using strformat": {
+            "prefix": "echo &",
+            "body": "echo &\"{${1:variable}=}\"",
+            "description": "Echo a variable (requires importing std/strformat)"
+        },
+        "debugEcho": {
+            "prefix": "debugEcho",
+            "body": "debugEcho ",
+            "description": "Equivalent to `echo` which can be used inside functions"
+        },
+        "debugEcho a variable using strformat": {
+            "prefix": "debugEcho &",
+            "body": "debugEcho &\"{${1:variable}=}\"",
+            "description": "Echo a variable inside a function (requires importing std/strformat)"
         }
     }
 }
