@@ -3,7 +3,6 @@ import platform/[vscodeApi, languageClientApi]
 
 import platform/js/[jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs]
 import nimutils
-from std/strformat import fmt
 from tools/nimBinTools import getNimbleExecPath, getBinPath
 import spec
 
@@ -313,7 +312,7 @@ proc stopLanguageServer(state: ExtensionState) {.async.} =
   await state.client.stop()
 
 proc getWebviewContent(status: NimLangServerStatus): cstring =
-  result = &"""
+  result = cstring(&"""
   <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -348,7 +347,7 @@ proc getWebviewContent(status: NimLangServerStatus): cstring =
     </div>
   </body>
   </html>
-  """
+  """)
 
 proc displayStatusInWebview(status: NimLangServerStatus)  =
   let panel = vscode.window.createWebviewPanel("nim", "Nim", ViewColumn.one, WebviewPanelOptions())
@@ -372,7 +371,7 @@ proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "
 
 proc onShowNotification*(args: JsObject) =
   let message = args.to(cstring)
-  vscode.window.showInformationMessage("Details", VscodeMessageOptions(detail: args.to(cstring), modal: true))
+  vscode.window.showInformationMessage("Details", VscodeMessageOptions(detail: message, modal: true))
 
 proc onDeleteNotification*(args: JsObject) =
   let id = args.to(cstring)
@@ -487,7 +486,7 @@ proc newNimLangServerStatusProvider*(): NimLangServerStatusProvider =
   provider.status = none(NimLangServerStatus)
   provider.notifications = @[]
   provider.lastId = 1
-  provider.getTreeItem = proc (element: TreeItem): Future[TreeItem]  =
+  provider.getTreeItem = proc (element: TreeItem): Future[TreeItem] =
     getTreeItemImpl(provider, element)
   provider.getChildren = proc (element: LspItem): seq[LspItem] = 
      getChildrenImpl(provider, element)
