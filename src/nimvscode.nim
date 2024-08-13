@@ -137,7 +137,8 @@ proc listCandidateProjects() =
 
 proc mapSeverityToVscodeSeverity(sev: cstring): VscodeDiagnosticSeverity =
   return case $(sev)
-    of "Hint", "Warning": VscodeDiagnosticSeverity.warning
+    of "Hint": VscodeDiagnosticSeverity.information
+    of "Warning": VscodeDiagnosticSeverity.warning
     of "Error": VscodeDiagnosticSeverity.error
     else: VscodeDiagnosticSeverity.error
 
@@ -237,7 +238,7 @@ proc runFile(ignore: bool, isDebug: bool = false): void =
     nimCfg = vscode.workspace.getConfiguration("nim")
     nimBuildCmdStr: cstring = state.getNimCmd() & nimCfg.getStr("buildCommand")
     runArg: cstring = if isDebug: " --debugger:native \"" else: " -r \""
-  
+
   outputLine(fmt"[info] Running with Nim from {state.getNimCmd()}".cstring)
   if not editor.isNil():
     if terminal.isNil():
@@ -293,7 +294,7 @@ proc runFile(ignore: bool, isDebug: bool = false): void =
             true
         )
 
-proc debugFile() = 
+proc debugFile() =
   let
     config = vscode.workspace.getConfiguration("nim")
     outputDirConfig = config.getStr("runOutputDirectory")
@@ -305,12 +306,12 @@ proc debugFile() =
   #compiles the file
   runFile(ignore = false, isDebug = true)
   let debugConfiguration = VsCodeDebugConfiguration(
-    name: "Nim: " & filename, `type`: typ, request: "launch", program: filePath 
+    name: "Nim: " & filename, `type`: typ, request: "launch", program: filePath
   )
   discard vscode.debug.startDebugging(workspaceFolder, debugConfiguration)
     .then(proc(success: bool) = console.log("Debugging started"))
 
-proc onStartDebugSession(session: VscodeDebugSession) = 
+proc onStartDebugSession(session: VscodeDebugSession) =
   ## load the nimprettylldb.py script into the debugger
   let dirname {.importjs:"__dirname"}: cstring
   let pyScriptPath = path.join(dirname, "../scripts/nimprettylldb.py")
@@ -331,7 +332,7 @@ proc setNimDir(state: ExtensionState) =
   #Exec nimble dump and extract the nimDir if it exists
   let path = vscode.workspace.workspaceFolders[0].uri.fsPath
   var process = cp.spawn(
-      getNimbleExecPath(), @["dump".cstring], 
+      getNimbleExecPath(), @["dump".cstring],
       SpawnOptions(shell: true, cwd: path))
 
   process.stdout.onData(proc(data: Buffer) =
@@ -340,8 +341,8 @@ proc setNimDir(state: ExtensionState) =
        state.nimDir = line[(1 + line.find '"')..^2]
        outputLine(fmt"[info] Using NimDir from nimble dump. NimDir: {state.nimDir}".cstring)
   )
-  
-proc showNimLangServerStatus() {.async.} = 
+
+proc showNimLangServerStatus() {.async.} =
   let lspStatus = await fetchLspStatus(state)
   state.statusProvider.refresh(lspStatus)
 
@@ -374,7 +375,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   processConfig(config)
   discard vscode.workspace.onDidChangeConfiguration(configUpdate)
   vscode.debug.onDidStartDebugSession(onStartDebugSession)
-    
+
   setNimDir(state)
   let provider = config.getStr("provider")
 
