@@ -1,7 +1,7 @@
 import std/[jsconsole, strutils, jsfetch, asyncjs, sugar, sequtils, options, strformat, times]
 import platform/[vscodeApi, languageClientApi]
 
-import platform/js/[jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs]
+import platform/js/[jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs, jsNodeNet, jsPromise]
 import nimutils
 from tools/nimBinTools import getNimbleExecPath, getBinPath
 import spec
@@ -203,6 +203,43 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: 
 proc refreshLspStatus*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) 
 proc refreshNotifications*(self: NimLangServerStatusProvider, notifications: seq[Notification])
 
+
+proc startClientSocket(portFut: Future[int]): proc (): Future[ServerOptions] {.async.} = 
+  return proc(): auto {.async.} = 
+    let port = await portFut
+    let socket = net.createConnection(port.cint, "localhost", proc(): void = discard)
+    var streamInfo = newJsObject()
+    streamInfo.reader = socket
+    streamInfo.writer = socket
+    let serverOptions = cast[ServerOptions](streamInfo)    
+    return promiseResolve(serverOptions)
+
+proc startSocket(nimlangserver: cstring, state: ExtensionState): proc (): Future[ServerOptions] =
+  let config = vscode.workspace.getConfiguration("nim")
+  let port = config.getInt("lspPort").int
+  if port != 0: #the user specified a port so we dont need to start the server process. It's assumed is already running
+    return startClientSocket(promiseResolve(port))
+  let process = cp.exec((nimlangserver & " --socket"), ExecOptions(), nil)    
+  let portPromise = newPromise(proc(
+        resolve: proc(port: int), reject: proc(reasons: JsObject)
+    ) =
+      process.stdout.onData(
+        proc(data: Buffer) =
+          let msg = $data.toString()
+          if msg.startsWith("port="):
+            try:
+              let port = parseInt(msg.subStr(5).strip)            
+              console.log ("nimlangserver socket listening at " & $port).cstring
+              resolve(port)
+            except ValueError as ex:
+              console.error ("An error ocurred trying to parse the port " & msg.substr(5) & ex.msg).cstring
+          state.lspChannel.appendLine msg.cstring
+        )
+      #StdError is directed to the output of the lsp which is the same as the stdio version does
+      process.stderr.onData((data: Buffer) => state.lspChannel.appendLine(data.toString()))
+  )
+  startClientSocket(portPromise)
+  
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let (rawPath, lspPathKind) = getLspPath(state)
   if lspPathKind == lspPathInvalid:
@@ -247,14 +284,24 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
       }
       clientOptions = LanguageClientOptions{
         documentSelector: @[DocumentFilter(scheme: cstring("file"),
-                                           language: cstring("nim"))]
+                                           language: cstring("nim"))],
+        outputChannel: state.lspChannel
       }
-
-    state.client = vscodeLanguageClient.newLanguageClient(
-       cstring("nimlangserver"),
-       cstring("Nim Language Server"),
-       serverOptions,
-       clientOptions)
+    let config = vscode.workspace.getConfiguration("nim")
+    let transportMode = config.getStr("transportMode")
+    case transportMode:
+    of "socket":
+      state.client = vscodeLanguageClient.newLanguageClient(
+        cstring("nimlangserver"),
+        cstring("Nim Language Server"),
+        startSocket(nimlangserver, state),        
+        clientOptions)
+    else:
+      state.client = vscodeLanguageClient.newLanguageClient(
+        cstring("nimlangserver"),
+        cstring("Nim Language Server"),        
+        serverOptions,
+        clientOptions)  
 
     await state.client.start()
     

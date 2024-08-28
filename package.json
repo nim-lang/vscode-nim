@@ -411,6 +411,20 @@
                     "type": "integer",
                     "default": 15,
                     "description": "The timeout in seconds for the Nim language server notifications. Use 0 to disable the timeout."
+                },
+                "nim.transportMode":{
+                    "type": "string",
+                    "default": "stdio",
+                    "enum": [
+                        "stdio",
+                        "socket"
+                    ],
+                    "description": "The transport mode the lsp client will use."
+                },
+                "nim.lspPort":{
+                    "type": "number",
+                    "default": 0,
+                    "description": "Useful for debugging. The port in which the lsp client will connect to when transport is socket. 0 implies the extension will start the socket server."
                 }
             }
         },

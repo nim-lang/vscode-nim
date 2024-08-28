@@ -44,6 +44,7 @@ type
     ctx*: VscodeExtensionContext
     config*: VscodeWorkspaceConfiguration
     channel*: VscodeOutputChannel
+    lspChannel*: VscodeOutputChannel
     client*: VscodeLanguageClient
     installPerformed*: bool
     nimDir*: string # Nim used directory. Extracted on activation from nimble. When it's "", means nim in the PATH is used.
