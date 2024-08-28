@@ -350,7 +350,8 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   state = ExtensionState(
     ctx: ctx,
     config: config,
-    channel: vscode.window.createOutputChannel("Nim")
+    channel: vscode.window.createOutputChannel("Nim"),
+    lspChannel: vscode.window.createOutputChannel("Nim Lsp")
   )
   nimUtils.ext = state
 

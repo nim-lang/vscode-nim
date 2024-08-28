@@ -1,6 +1,6 @@
 import std/jsffi
 import js/[jsPromise, jsNode]
-
+import vscodeApi
 export jsffi, jsPromise, jsNode
 
 # shim for https://github.com/microsoft/vscode-languageserver-node
@@ -38,12 +38,20 @@ type
   LanguageClientOptions* {.importc.} = ref LanguageClientOptionsObj
   LanguageClientOptionsObj* {.importc.} = object of JsObject
     documentSelector*: seq[DocumentFilter]
+    outputChannel*: VscodeOutputChannel
 
 proc newLanguageClient*(
   cl: VscodeLanguageClient,
   name: cstring,
   description: cstring,
   serverOptions: ServerOptions,
+  clientOptions: LanguageClientOptions): VscodeLanguageClient {.importcpp: "(new #.LanguageClient(@))".}
+
+proc newLanguageClient*(
+  cl: VscodeLanguageClient,
+  name: cstring,
+  description: cstring,
+  serverOptions: proc(): Future[ServerOptions],
   clientOptions: LanguageClientOptions): VscodeLanguageClient {.importcpp: "(new #.LanguageClient(@))".}
 
 proc start*(s: VscodeLanguageClient): Promise[void] {.importcpp: "#.start()".}
