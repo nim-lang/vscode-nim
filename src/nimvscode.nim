@@ -217,7 +217,7 @@ proc startBuildOnSaveWatcher(subscriptions: Array[VscodeDisposable]) =
     proc(document: VscodeTextDocument) =
       if document.languageId != "nim":
         return
-
+      
       var config = vscode.workspace.getConfiguration("nim")
       if config.getBool("lintOnSave"):
         runCheck(document)
@@ -329,6 +329,9 @@ proc clearCachesCmd(): void =
 proc setNimDir(state: ExtensionState) =
   #TODO allow the user specify a path in the settings
   #Exec nimble dump and extract the nimDir if it exists
+  if not vscode.workspace.workspaceFolders.toJs().to(bool):
+    return
+
   let path = vscode.workspace.workspaceFolders[0].uri.fsPath
   var process = cp.spawn(
       getNimbleExecPath(), @["dump".cstring],
@@ -369,7 +372,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   vscode.commands.registerCommand("nim.showNotification", onShowNotification)
   vscode.commands.registerCommand("nim.onDeleteNotification", onDeleteNotification)
   vscode.commands.registerCommand("nim.onClearAllNotifications", onClearAllNotifications)
-
+  
 
 
   processConfig(config)
@@ -378,7 +381,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
 
   setNimDir(state)
   let provider = config.getStr("provider")
-
+  
   if provider == "lsp":
     await startLanguageServer(true, state)
     state.statusProvider = newNimLangServerStatusProvider()
