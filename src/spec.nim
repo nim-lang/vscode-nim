@@ -39,7 +39,11 @@ type
     notifications*: seq[Notification] 
     lastId*: int32 
     # onDidChangeTreeData*: EventEmitter
-
+  LSPVersion* = tuple[major: int, minor: int, patch: int]
+  
+  LspExtensionCapability* = enum #List of extensions the lsp server support.
+    excNone
+   
   ExtensionState* = ref object
     ctx*: VscodeExtensionContext
     config*: VscodeWorkspaceConfiguration
@@ -49,6 +53,10 @@ type
     installPerformed*: bool
     nimDir*: string # Nim used directory. Extracted on activation from nimble. When it's "", means nim in the PATH is used.
     statusProvider*: NimLangServerStatusProvider
+    lspVersion*: LSPVersion
+    onLspVersionLoaded*: proc (): Future[void]
+    lspExtensionCapabilities*: set[LspExtensionCapability]
+
 
 # type
 #   SolutionKind* {.pure.} = enum
