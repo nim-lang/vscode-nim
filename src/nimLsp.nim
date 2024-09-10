@@ -191,7 +191,6 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: 
       else:
         state.lspVersion = ver.get()
         notifyOrUpdateOnTheLSPVersion(ver.get, latestVersion, state)
-        console.log("Blab la")
         if state.onLspVersionLoaded != nil:        
           discard state.onLspVersionLoaded()
     else:
@@ -438,6 +437,18 @@ proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "
   statusItem.notification = notification
   cast[LspItem](statusItem)
 
+proc onLspSuggest*(action, projectFile: cstring) {.async.} = 
+  #Handles extension/suggest calls 
+  #(right now only from the restart button in the suggest instance from the nim panel)
+  case action:
+  of "restart":      
+    let suggestParams = JsObject()
+    suggestParams.action = action
+    suggestParams.projectFile = projectFile
+    let response = await fetchLsp[JsObject, JsObject](ext, "extension/suggest", suggestParams)
+    console.log(response)
+  else: 
+    console.error("Action not supported")
 
 proc onShowNotification*(args: JsObject) =
   let message = args.to(cstring)
@@ -532,7 +543,7 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
     elif not element.instance.isNone:
       # Children of a specific instance
       let instance = element.instance.get
-      return @[
+      var nsItems = @[
         newLspItem("Project File", instance.projectFile),
         newLspItem("Capabilities", instance.capabilities.join(", ").cstring),
         newLspItem("Version", instance.version),
@@ -540,8 +551,18 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
         newLspItem("Port", cstring($instance.port)),
         newLspItem("Open Files", instance.openFiles.join(", ").cstring),
         newLspItem("Unknown Files", instance.unknownFiles.join(", ").cstring)
-      ]
-
+      ]      
+      if excRestartSuggest in ext.lspExtensionCapabilities:
+        let restartItem = vscode.newTreeItem("Restart", TreeItemCollapsibleState_None)
+        restartItem.command = newJsObject()
+        restartItem.command.command = "nim.onLspSuggest".cstring
+        restartItem.command.title = "Restart Nimsuggest".cstring
+        #Notice the actions here corresponds to SuggestAction in the lsp rathen than capabilities
+        restartItem.command.arguments = @[cstring("restart"), instance.projectFile]
+        
+        restartItem.iconPath = vscode.themeIcon("debug-restart", vscode.themeColor("notificationsWarningIcon.foreground"))
+        nsItems.insert(@[cast[LspItem](restartItem)], 0)
+      return nsItems
     return @[]
 
 proc getTreeItemImpl(self: NimLangServerStatusProvider, element: TreeItem): Future[TreeItem] {.async.}=
