@@ -1,4 +1,4 @@
-import std/[jsconsole, strutils, jsfetch, asyncjs, sugar, sequtils, options, strformat, times]
+import std/[jsconsole, strutils, jsfetch, asyncjs, sugar, sequtils, options, strformat, times, sets]
 import platform/[vscodeApi, languageClientApi]
 
 import platform/js/[jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs, jsNodeNet, jsPromise]
@@ -7,7 +7,6 @@ from tools/nimBinTools import getNimbleExecPath, getBinPath
 import spec
 
 type 
-  LSPVersion = tuple[major: int, minor: int, patch: int]
   LSPInstallPathKind = enum
     lspPathInvalid, #Invalid path
     lspPathLocal, #Default local nimble install
@@ -15,6 +14,7 @@ type
     lspPathSetting #User defined path
 
 const MinimalLSPVersion = (1, 0, 0)
+const MinimalCapabilitiesLSPVersion = (1, 5, 2)
 
 proc `$` (v: LSPVersion):string = &"v{v.major}.{v.minor}.{v.patch}"
 
@@ -188,9 +188,12 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: 
       let ver = parseVersion($gotStdout)
       if ver.isNone():
         console.error("Unexpected output from nimlangserver: ", gotStdout, gotStderr)
-        vscode.window.showErrorMessage("Error starting nimlangserver: " & gotStdout & gotStderr)
       else:
+        state.lspVersion = ver.get()
         notifyOrUpdateOnTheLSPVersion(ver.get, latestVersion, state)
+        console.log("Blab la")
+        if state.onLspVersionLoaded != nil:        
+          discard state.onLspVersionLoaded()
     else:
       #Running 0.2.0 kill the started nimlangserver process and notify the user is running an old version of the lsp
       kill(process)
@@ -239,7 +242,16 @@ proc startSocket(nimlangserver: cstring, state: ExtensionState): proc (): Future
       process.stderr.onData((data: Buffer) => state.lspChannel.appendLine(data.toString()))
   )
   startClientSocket(portPromise)
-  
+
+proc fetchLsp*[T, U](state: ExtensionState, name: string, params: U): Future[T] {.async.} = 
+  let response = await state.client.sendRequest(name, params.toJs())
+  let res = jsonStringify(response).jsonParse(T)
+  console.log(res)
+  return res
+
+proc fetchLsp*[T](state: ExtensionState, name: string): Future[T] = 
+  return fetchLsp[T, JsObject](state, name, ().toJs())
+
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let (rawPath, lspPathKind) = getLspPath(state)
   if lspPathKind == lspPathInvalid:
@@ -325,7 +337,7 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
 
     func messageTypToStr(typ: MessageType): cstring  = 
       case typ:
-      of Error: "error"
+      of MessageType.Error: "error"
       of Warning: "warning"
       else: "info"
 
@@ -352,6 +364,17 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
       )
 
     outputLine("Nim Language Server started")
+    state.onLspVersionLoaded = proc () {.async.} = 
+      if state.lspVersion >= MinimalCapabilitiesLSPVersion:
+        let caps = await fetchLsp[seq[cstring]](state, "extension/capabilities")
+        for cap in caps:
+          try:
+            let extCap = parseEnum[LspExtensionCapability]($cap)
+            state.lspExtensionCapabilities.incl extCap
+          except ValueError:
+            console.error(("Error parsing server extension capability " & cap).cstring)
+        outputLine(fmt" Lsp Server Extension Capabilities: {state.lspExtensionCapabilities}".cstring)
+
 
 export startLanguageServer
 
