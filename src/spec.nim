@@ -23,6 +23,7 @@ type
     version*: cstring
     nimsuggestInstances*: seq[NimSuggestStatus]
     openFiles*: seq[cstring]
+    extensionCapabilities*: seq[cstring]
 
   LspItem* = ref object of TreeItem
     instance*: Option[NimSuggestStatus]
@@ -54,7 +55,6 @@ type
     nimDir*: string # Nim used directory. Extracted on activation from nimble. When it's "", means nim in the PATH is used.
     statusProvider*: NimLangServerStatusProvider
     lspVersion*: LSPVersion
-    onLspVersionLoaded*: proc (): Future[void]
     lspExtensionCapabilities*: set[LspExtensionCapability]
 
 

@@ -191,8 +191,6 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: 
       else:
         state.lspVersion = ver.get()
         notifyOrUpdateOnTheLSPVersion(ver.get, latestVersion, state)
-        if state.onLspVersionLoaded != nil:        
-          discard state.onLspVersionLoaded()
     else:
       #Running 0.2.0 kill the started nimlangserver process and notify the user is running an old version of the lsp
       kill(process)
@@ -250,6 +248,16 @@ proc fetchLsp*[T, U](state: ExtensionState, name: string, params: U): Future[T] 
 
 proc fetchLsp*[T](state: ExtensionState, name: string): Future[T] = 
   return fetchLsp[T, JsObject](state, name, ().toJs())
+
+
+proc addExtensionCapabilities(state: ExtensionState, caps: seq[cstring]) = 
+  for cap in caps:
+    try:
+      let extCap = parseEnum[LspExtensionCapability]($cap)
+      state.lspExtensionCapabilities.incl extCap
+    except ValueError:
+      console.error(("Error parsing server extension capability " & cap).cstring)
+  outputLine(fmt" Lsp Server Extension Capabilities: {state.lspExtensionCapabilities}".cstring)
 
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let (rawPath, lspPathKind) = getLspPath(state)
@@ -363,16 +371,6 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
       )
 
     outputLine("Nim Language Server started")
-    state.onLspVersionLoaded = proc () {.async.} = 
-      if state.lspVersion >= MinimalCapabilitiesLSPVersion:
-        let caps = await fetchLsp[seq[cstring]](state, "extension/capabilities")
-        for cap in caps:
-          try:
-            let extCap = parseEnum[LspExtensionCapability]($cap)
-            state.lspExtensionCapabilities.incl extCap
-          except ValueError:
-            console.error(("Error parsing server extension capability " & cap).cstring)
-        outputLine(fmt" Lsp Server Extension Capabilities: {state.lspExtensionCapabilities}".cstring)
 
 
 export startLanguageServer
@@ -596,6 +594,7 @@ proc newNimLangServerStatusProvider*(): NimLangServerStatusProvider =
 proc refreshLspStatus*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) =
   self.status = some(lspStatus)
   self.emitter.fire(nil)
+  ext.addExtensionCapabilities(lspStatus.extensionCapabilities)
 
 proc refreshNotifications*(self: NimLangServerStatusProvider, notifications: seq[Notification]) =
   self.notifications = notifications
