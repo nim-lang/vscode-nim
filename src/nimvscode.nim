@@ -372,6 +372,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   vscode.commands.registerCommand("nim.showNotification", onShowNotification)
   vscode.commands.registerCommand("nim.onDeleteNotification", onDeleteNotification)
   vscode.commands.registerCommand("nim.onClearAllNotifications", onClearAllNotifications)
+  vscode.commands.registerCommand("nim.onLspSuggest", onLspSuggest)
   
 
 

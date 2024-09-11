@@ -42,7 +42,7 @@ type
   LSPVersion* = tuple[major: int, minor: int, patch: int]
   
   LspExtensionCapability* = enum #List of extensions the lsp server support.
-    excNone
+    excNone = "None", excRestartSuggest = "RestartSuggest"
    
   ExtensionState* = ref object
     ctx*: VscodeExtensionContext
