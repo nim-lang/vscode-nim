@@ -427,7 +427,10 @@ proc fetchLspStatus*(state: ExtensionState): Future[NimLangServerStatus] {.async
   state.channel.appendLine(($lspStatus).cstring)
   return lspStatus
 
-proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "", collapsibleState: int = 0, instance: Option[NimSuggestStatus] = none(NimSuggestStatus), notification: Option[Notification] = none(Notification) ): LspItem =
+proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "", 
+  collapsibleState: int = 0, instance: Option[NimSuggestStatus] = none(NimSuggestStatus), 
+  notification: Option[Notification] = none(Notification)): LspItem =
+  
   let statusItem = vscode.newTreeItem(label, collapsibleState)
   statusItem.description = description
   statusItem.tooltip = tooltip
@@ -516,6 +519,16 @@ proc globalNotificationActionItems(): seq[LspItem] =
     - LSP Status
 
 ]#
+proc newRestartItem(title: string, pathToFile: string): LspItem = 
+  # patth to file * == restart all
+  let restartItem = vscode.newTreeItem(title, TreeItemCollapsibleState_None)
+  restartItem.command = newJsObject()
+  restartItem.command.command = "nim.onLspSuggest".cstring
+  restartItem.command.title = title.cstring
+  #Notice the actions here corresponds to SuggestAction in the lsp rathen than capabilities
+  restartItem.command.arguments = @[cstring("restart"), pathToFile.cstring]   
+  restartItem.iconPath = vscode.themeIcon("debug-restart", vscode.themeColor("notificationsWarningIcon.foreground"))
+  cast[LspItem](restartItem)
 
 proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil): seq[LspItem] =
   if element.isNil: #Root
@@ -531,24 +544,25 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
     if self.status.isNone:
       return @[newLspItem("Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None)]
     if element.label == "LSP Status":
-      return @[
-        newLspItem("Version", self.status.get.version),
-        newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Collapsed)
-      ] & self.status.get.openFiles.mapIt(newLspItem("OpenFile:", it))
+      var topElements = @[
+        
+          newLspItem("Version", self.status.get.version),
+          #TODO add lsp path
+          newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Collapsed)
+        ] & self.status.get.openFiles.mapIt(newLspItem("Open File:", it, "", TreeItemCollapsibleState_Collapsed))
+      if excRestartSuggest in ext.lspExtensionCapabilities:
+        topElements.insert(newRestartItem("Restart All nimsuggest", "*"), 1)
+      return topElements
+    elif element.label == "Open File:" and excRestartSuggest in ext.lspExtensionCapabilities:
+      return @[newRestartItem("Restart", $element.description)]
     elif element.label == "NimSuggest Instances":
       # Children of Nim Suggest Instances
       var instances = self.status.get.nimsuggestInstances.mapIt(newLspItem(it.projectFile, "", "", TreeItemCollapsibleState_Collapsed, some it))
-      if excRestartSuggest in ext.lspExtensionCapabilities:
-        let restartItem = vscode.newTreeItem("Restart All", TreeItemCollapsibleState_None)
-        restartItem.command = newJsObject()
-        restartItem.command.command = "nim.onLspSuggest".cstring
-        restartItem.command.title = "Restart All Nimsuggests".cstring
-        #Notice the actions here corresponds to SuggestAction in the lsp rathen than capabilities
-        restartItem.command.arguments = @[cstring("restart"), "*".cstring] #Restart all        
-        restartItem.iconPath = vscode.themeIcon("debug-restart", vscode.themeColor("notificationsWarningIcon.foreground"))
-        instances.add(cast[LspItem](restartItem))
+     
       return instances
-    elif not element.instance.isNone:
+    elif element.label == "Open Files": #come from below
+      return element.instance.get.openFiles.mapIt(newLspItem("File:", it, "", TreeItemCollapsibleState_None))
+    elif element.instance.isSome:     
       # Children of a specific instance
       let instance = element.instance.get
       var nsItems = @[
@@ -557,19 +571,12 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
         newLspItem("Version", instance.version),
         newLspItem("Path", instance.path),
         newLspItem("Port", cstring($instance.port)),
-        newLspItem("Open Files", instance.openFiles.join(", ").cstring),
+        newLspItem("Open Files", "", "", TreeItemCollapsibleState_Collapsed, instance = element.instance),
         newLspItem("Unknown Files", instance.unknownFiles.join(", ").cstring)
       ]      
       if excRestartSuggest in ext.lspExtensionCapabilities:
-        let restartItem = vscode.newTreeItem("Restart", TreeItemCollapsibleState_None)
-        restartItem.command = newJsObject()
-        restartItem.command.command = "nim.onLspSuggest".cstring
-        restartItem.command.title = "Restart Nimsuggest".cstring
-        #Notice the actions here corresponds to SuggestAction in the lsp rathen than capabilities
-        restartItem.command.arguments = @[cstring("restart"), instance.projectFile]
-        
-        restartItem.iconPath = vscode.themeIcon("debug-restart", vscode.themeColor("notificationsWarningIcon.foreground"))
-        nsItems.insert(cast[LspItem](restartItem), 0)
+        let restartItem = newRestartItem("Restart", $instance.projectFile)
+        nsItems.insert(restartItem, 0)
       return nsItems
     return @[]
 
