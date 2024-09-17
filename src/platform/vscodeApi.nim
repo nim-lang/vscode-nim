@@ -177,7 +177,7 @@ type
     uri*: VscodeUri
     isDirty*: bool
     languageId*: cstring
-    isUntitled*: bool
+    isUntitled*: bool    
 
   VscodeHoverLabel* = ref object
     # Not explictly named in vscode API, see type literal under MarkedString
