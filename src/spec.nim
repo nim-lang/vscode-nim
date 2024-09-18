@@ -10,6 +10,15 @@ type
   Timestamp* = cint
   NimsuggestId* = cstring
 
+  PendingRequestState* = enum
+    prsOnGoing = "OnGoing", prsCancelled = "Cancelled", prsComplete = "Complete"
+
+  PendingRequestStatus* = object
+    name*: cstring
+    projectFile*: cstring
+    time*: cstring
+    state*: cstring
+
   NimSuggestStatus* = object
     projectFile*: cstring
     capabilities*: seq[cstring]
@@ -24,6 +33,7 @@ type
     nimsuggestInstances*: seq[NimSuggestStatus]
     openFiles*: seq[cstring]
     extensionCapabilities*: seq[cstring]
+    pendingRequests*: seq[PendingRequestStatus]
 
   LspItem* = ref object of TreeItem
     instance*: Option[NimSuggestStatus]

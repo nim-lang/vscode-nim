@@ -326,7 +326,7 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
     
     state.client.onNotification("extension/statusUpdate", proc (params: JsObject) =
       let lspStatus = jsonStringify(params).jsonParse(NimLangServerStatus)
-      outputLine("Received status update " & jsonStringify(params))
+      # outputLine("Received status update " & jsonStringify(params))
       refreshLspStatus(state.statusProvider, lspStatus)
     )
 
@@ -428,7 +428,9 @@ proc fetchLspStatus*(state: ExtensionState): Future[NimLangServerStatus] {.async
   return lspStatus
 
 proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "", 
-  collapsibleState: int = 0, instance: Option[NimSuggestStatus] = none(NimSuggestStatus), 
+  collapsibleState: int = 0, 
+  instance: Option[NimSuggestStatus] = none(NimSuggestStatus), 
+  pendingRequest: Option[PendingRequestStatus] = none(PendingRequestStatus),
   notification: Option[Notification] = none(Notification)): LspItem =
   
   let statusItem = vscode.newTreeItem(label, collapsibleState)
@@ -436,6 +438,7 @@ proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "
   statusItem.tooltip = tooltip
   statusItem.instance = instance
   statusItem.notification = notification
+  statusItem.pendingRequest = pendingRequest
   cast[LspItem](statusItem)
 
 proc onLspSuggest*(action, projectFile: cstring) {.async.} = 
@@ -545,20 +548,34 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
       return @[newLspItem("Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None)]
     if element.label == "LSP Status":
       var topElements = @[
-        
+
           newLspItem("Version", self.status.get.version),
           #TODO add lsp path
-          newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Collapsed)
+          newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Expanded)
         ] & self.status.get.openFiles.mapIt(newLspItem("Open File:", it, "", TreeItemCollapsibleState_Collapsed))
       if excRestartSuggest in ext.lspExtensionCapabilities:
-        topElements.insert(newRestartItem("Restart All nimsuggest", "*"), 1)
+        topElements.insert(newRestartItem("Restart All nimsuggest", "restartAll"), 0)
+      if self.status.get.pendingRequests.len > 0:
+        topElements.add(newLspItem(&"Pending Requests ({self.status.get.pendingRequests.len})", "", "", TreeItemCollapsibleState_Expanded))
       return topElements
     elif element.label == "Open File:" and excRestartSuggest in ext.lspExtensionCapabilities:
-      return @[newRestartItem("Restart", $element.description)]
+      return @[newRestartItem("Restart", "restart")]
+    elif ($element.label).contains("Pending Requests"):
+      let pendingRequests = self.status.get.pendingRequests
+      return pendingRequests.mapIt(newLspItem(it.name, "", "", TreeItemCollapsibleState_Expanded, pendingRequest = some it))
+    elif element.pendingRequest.to(Option[PendingRequestStatus]).isSome:
+      let pr = element.pendingRequest.to(Option[PendingRequestStatus]).get()
+      let timeTitle = if pr.state == "OnGoing": "Waiting for " else: "Took"
+      var prElements = @[        
+        newLspItem(timeTitle.cstring, pr.time, "", TreeItemCollapsibleState_None),
+        newLspItem("State", (pr.state).cstring, "", TreeItemCollapsibleState_None),
+      ]
+      if pr.projectFile != "":
+        prElements.add(newLspItem("NimSuggest", pr.projectFile, "", TreeItemCollapsibleState_None))
+      return prElements
     elif element.label == "NimSuggest Instances":
       # Children of Nim Suggest Instances
       var instances = self.status.get.nimsuggestInstances.mapIt(newLspItem(it.projectFile, "", "", TreeItemCollapsibleState_Collapsed, some it))
-     
       return instances
     elif element.label == "Open Files": #come from below
       return element.instance.get.openFiles.mapIt(newLspItem("File:", it, "", TreeItemCollapsibleState_None))
