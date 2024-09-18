@@ -6,7 +6,7 @@ when not defined(js):
 import platform/vscodeApi
 import platform/js/[jsre, jsString, jsNodeFs, jsNodePath, jsNodeCp]
 import tools/nimBinTools
-import std/[strformat, jsconsole, strutils, options]
+import std/[strformat, jsconsole, strutils, options, sugar]
 from std/os import `/`
 import spec
 import nimRename,
@@ -364,7 +364,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   vscode.commands.registerCommand("nim.run.file", runFile)
   vscode.commands.registerCommand("nim.debug.file", debugFile)
   vscode.commands.registerCommand("nim.check", runCheck)
-  vscode.commands.registerCommand("nim.restartNimsuggest", restartNimsuggest)
+  vscode.commands.registerCommand("nim.restartNimsuggest", () => onLspSuggest("restart", "current"))
   vscode.commands.registerCommand("nim.execSelectionInTerminal", execSelectionInTerminal)
   vscode.commands.registerCommand("nim.clearCaches", clearCachesCmd)
   vscode.commands.registerCommand("nim.listCandidateProjects", listCandidateProjects)

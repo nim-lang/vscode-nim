@@ -28,16 +28,21 @@ type
     openFiles*: seq[cstring]
     unknownFiles*: seq[cstring]
 
+  ProjectError* = object
+    projectFile*: cstring 
+    errorMessage*: cstring
+
   NimLangServerStatus* = object
     version*: cstring
     nimsuggestInstances*: seq[NimSuggestStatus]
     openFiles*: seq[cstring]
     extensionCapabilities*: seq[cstring]
     pendingRequests*: seq[PendingRequestStatus]
+    projectErrors*: seq[ProjectError]
 
   LspItem* = ref object of TreeItem
     instance*: Option[NimSuggestStatus]
-    notification*: Option[Notification]
+    notification*: Option[Notification]    
 
   Notification* = object
     message*: cstring
