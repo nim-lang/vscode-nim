@@ -2,7 +2,6 @@
 import std/[options, times]
 import platform/vscodeApi
 
-
 from platform/languageClientApi import VscodeLanguageClient
 
 type
@@ -11,7 +10,9 @@ type
   NimsuggestId* = cstring
 
   PendingRequestState* = enum
-    prsOnGoing = "OnGoing", prsCancelled = "Cancelled", prsComplete = "Complete"
+    prsOnGoing = "OnGoing"
+    prsCancelled = "Cancelled"
+    prsComplete = "Complete"
 
   PendingRequestStatus* = object
     name*: cstring
@@ -29,7 +30,7 @@ type
     unknownFiles*: seq[cstring]
 
   ProjectError* = object
-    projectFile*: cstring 
+    projectFile*: cstring
     errorMessage*: cstring
     lastKnownCmd*: cstring
 
@@ -44,7 +45,7 @@ type
 
   LspItem* = ref object of TreeItem
     instance*: Option[NimSuggestStatus]
-    notification*: Option[Notification]    
+    notification*: Option[Notification]
 
   Notification* = object
     message*: cstring
@@ -54,14 +55,15 @@ type
 
   NimLangServerStatusProvider* = ref object of JsObject
     status*: Option[NimLangServerStatus]
-    notifications*: seq[Notification] 
-    lastId*: int32 
-    # onDidChangeTreeData*: EventEmitter
+    notifications*: seq[Notification]
+    lastId*: int32 # onDidChangeTreeData*: EventEmitter
+
   LSPVersion* = tuple[major: int, minor: int, patch: int]
-  
+
   LspExtensionCapability* = enum #List of extensions the lsp server support.
-    excNone = "None", excRestartSuggest = "RestartSuggest"
-   
+    excNone = "None"
+    excRestartSuggest = "RestartSuggest"
+
   ExtensionState* = ref object
     ctx*: VscodeExtensionContext
     config*: VscodeWorkspaceConfiguration
@@ -69,11 +71,11 @@ type
     lspChannel*: VscodeOutputChannel
     client*: VscodeLanguageClient
     installPerformed*: bool
-    nimDir*: string # Nim used directory. Extracted on activation from nimble. When it's "", means nim in the PATH is used.
+    nimDir*: string
+      # Nim used directory. Extracted on activation from nimble. When it's "", means nim in the PATH is used.
     statusProvider*: NimLangServerStatusProvider
     lspVersion*: LSPVersion
     lspExtensionCapabilities*: set[LspExtensionCapability]
-
 
 # type
 #   SolutionKind* {.pure.} = enum

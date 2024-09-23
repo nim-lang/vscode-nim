@@ -45,36 +45,33 @@ proc isDirectory*(s: FsStats): bool {.importcpp.}
 
 # Promises API
 proc writeFile*(
-    fp: FsPromises,
-    path: cstring,
-    data: cstring
+  fp: FsPromises, path: cstring, data: cstring
 ): Future[void] {.importcpp: "#.writeFile(@)".}
+
 proc open*(
-    fp: FsPromises,
-    path: cstring,
-    options: cstring
+  fp: FsPromises, path: cstring, options: cstring
 ): Future[NodeFileHandle] {.importcpp: "#.open(@)".}
-proc unlink*(
-    fp: FsPromises,
-    path: cstring
-): Future[void] {.importcpp: "#.unlink(@)".}
+
+proc unlink*(fp: FsPromises, path: cstring): Future[void] {.importcpp: "#.unlink(@)".}
 proc copyFile*(
-    fp: FsPromises,
-    src: cstring,
-    dest: cstring
+  fp: FsPromises, src: cstring, dest: cstring
 ): Future[void] {.discardable, importcpp: "#.copyFile(@)".}
+
 proc readFileUtf8*(
-    fp: FsPromises,
-    path: cstring
+  fp: FsPromises, path: cstring
 ): Future[cstring] {.importcpp: "#.readFile(#, {'encoding': 'utf8'})".}
 
 proc close*(fh: NodeFileHandle): Future[void] {.discardable, importcpp.}
-proc write*(fh: NodeFileHandle, data: cstring, position: cint): Future[void] {.importcpp.}
+proc write*(
+  fh: NodeFileHandle, data: cstring, position: cint
+): Future[void] {.importcpp.}
+
 proc writeFile*(fh: NodeFileHandle, data: cstring): Future[void] {.importcpp.}
 proc sync*(fh: NodeFileHandle): Future[void] {.discardable, importcpp.}
 proc truncate*(fh: NodeFileHandle): Future[void] {.discardable, importcpp.}
-proc readFileUtf8*(fh: NodeFileHandle): Future[cstring] {.
-    importcpp: "#.readFile('utf8')".}
+proc readFileUtf8*(
+  fh: NodeFileHandle
+): Future[cstring] {.importcpp: "#.readFile('utf8')".}
 
 var fs*: Fs = require("fs").to(Fs)
 var fsp*: FsPromises = fs.promises

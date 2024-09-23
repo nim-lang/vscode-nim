@@ -9,24 +9,16 @@ import tools/nimBinTools
 import std/[strformat, jsconsole, strutils, options, sugar]
 from std/os import `/`
 import spec
-import nimRename,
-  nimSuggest,
-  nimDeclaration,
-  nimReferences,
-  nimOutline,
-  nimSignature,
-  nimHover,
-  nimFormatting
+import
+  nimRename, nimSuggest, nimDeclaration, nimReferences, nimOutline, nimSignature,
+  nimHover, nimFormatting
 
-from nimBuild import check,
-  execSelectionInTerminal,
-  activateEvalConsole,
-  CheckResult
+from nimBuild import check, execSelectionInTerminal, activateEvalConsole, CheckResult
 from nimStatus import showHideStatus
 from nimIndexer import initWorkspace, clearCaches, onClose
 from nimImports import initImports, removeFileFromImports, addFileToImports
-from nimSuggestExec import extensionContext, initNimSuggest,
-                           closeAllNimSuggestProcesses, restartNimsuggest
+from nimSuggestExec import
+  extensionContext, initNimSuggest, closeAllNimSuggestProcesses, restartNimsuggest
 from nimUtils import ext, getDirtyFile, outputLine
 from nimProjects import processConfig, configUpdate
 from nimMode import mode
@@ -41,12 +33,19 @@ type
   # FileExtensions* {.pure, size: sizeof(cint).} = enum
   #     nimble, nims, nimCfg = "nim.cfg", cfg, nim
   CandidateKind* {.pure, size: sizeof(cint).} = enum
-    nimble, prjNims, configNims, prjNimCfg, cfg, nim
+    nimble
+    prjNims
+    configNims
+    prjNimCfg
+    cfg
+    nim
+
   CandidateKinds* = set[CandidateKind]
   CandidateMatchBoost* {.pure.} = enum
-    noBoost,
-    nameMatchesParentViaSrc,
+    noBoost
+    nameMatchesParentViaSrc
     nameMatchesParent
+
   CandidateProject* = ref object
     workspaceFolder*: VscodeWorkspaceFolder
     kinds*: CandidateKinds
@@ -54,16 +53,15 @@ type
     name*: cstring
     fsPath*: cstring
     coverPathPrefixes*: seq[cstring]
+
   UserProvidedProject* = ref object
     name*: cstring
 
-let defaultIndexExcludeGlobs =
-  block:
-    let res = newJsAssoc[cstring, bool]()
-    res[cstring "**"/".git"/"**"] = true
-    res[cstring "nimcache"/"**"] = true
-    res
-  ## exclude these by default as most people will not want them indexed
+let defaultIndexExcludeGlobs = block:
+  let res = newJsAssoc[cstring, bool]()
+  res[cstring "**" / ".git" / "**"] = true
+  res[cstring "nimcache" / "**"] = true
+  res ## exclude these by default as most people will not want them indexed
 
 proc listCandidateProjects() =
   ## Find all the "projects" in the workspace and folders
@@ -105,37 +103,53 @@ proc listCandidateProjects() =
   var map = newMap[cstring, Array[CandidateProject]]()
   for folder in vscode.workspace.workspaceFolders:
     map[folder.name] = newArray[CandidateProject]()
-    vscode.workspace.fs.readDirectory(folder.uri).then(proc(r: Array[
-        VscodeReadDirResult]) =
-      for i in r:
-        case i.fileType
-        of symbolicLink, symlinkDir, unknown:
-          continue #skip symlinks & unknowns
-        else:
-          var kind = if i.name.endsWith(".nimble"): nimble
-            elif i.name.endsWith(".nim.cfg"): prjNimCfg
-            elif i.name.endsWith("nim.cfg"): cfg
-            elif i.name.endsWith("config.nims"): configNims
-            elif i.name.endsWith(".nims"): prjNims
-            elif i.name.endsWith(".nim"): nim
-            else: continue
 
-          map[folder.name].add(CandidateProject(
-            workspaceFolder: folder,
-            kinds: {kind},
-            name: i.name,
-            fsPath: path.join(folder.uri.fsPath, i.name)
-          ))
+    vscode.workspace.fs
+    .readDirectory(folder.uri)
+    .then(
+      proc(r: Array[VscodeReadDirResult]) =
+        for i in r:
+          case i.fileType
+          of symbolicLink, symlinkDir, unknown:
+            continue #skip symlinks & unknowns
+          else:
+            var kind =
+              if i.name.endsWith(".nimble"):
+                nimble
+              elif i.name.endsWith(".nim.cfg"):
+                prjNimCfg
+              elif i.name.endsWith("nim.cfg"):
+                cfg
+              elif i.name.endsWith("config.nims"):
+                configNims
+              elif i.name.endsWith(".nims"):
+                prjNims
+              elif i.name.endsWith(".nim"):
+                nim
+              else:
+                continue
 
-          # TODO check dir entries if nothing found
-      for n, cs in map.entries():
-        for c in cs:
-          outputLine(fmt"[info] workspaceFolder: {n}, name: {c.name}, kind: {$(c.kinds)}".cstring)
+            map[folder.name].add(
+              CandidateProject(
+                workspaceFolder: folder,
+                kinds: {kind},
+                name: i.name,
+                fsPath: path.join(folder.uri.fsPath, i.name),
+              )
+            )
+
+            # TODO check dir entries if nothing found
+        for n, cs in map.entries():
+          for c in cs:
+            outputLine(
+              fmt"[info] workspaceFolder: {n}, name: {c.name}, kind: {$(c.kinds)}".cstring
+            )
     ).catch do(r: JsObject):
       console.error(r)
 
 proc mapSeverityToVscodeSeverity(sev: cstring): VscodeDiagnosticSeverity =
-  return case $(sev)
+  return
+    case $(sev)
     of "Hint": VscodeDiagnosticSeverity.information
     of "Warning": VscodeDiagnosticSeverity.warning
     of "Error": VscodeDiagnosticSeverity.error
@@ -149,12 +163,7 @@ proc findErrorRange(msg: cstring, line, column: cint): VscodeRange =
 
   let line = max(0, line - 1)
 
-  vscode.newRange(
-    line,
-    max(0, column - 1),
-    line,
-    max(0, endColumn - 1)
-  )
+  vscode.newRange(line, max(0, column - 1), line, max(0, endColumn - 1))
 
 proc runCheck(doc: VscodeTextDocument = nil): void =
   var config = vscode.workspace.getConfiguration("nim")
@@ -168,56 +177,67 @@ proc runCheck(doc: VscodeTextDocument = nil): void =
 
   var uri = document.uri
 
-  vscode.window.withProgress(
-      VscodeProgressOptions{
-          location: VscodeProgressLocation.window,
-          cancellable: false,
-          title: "Nim: check project..."
+  vscode.window
+  .withProgress(
+    VscodeProgressOptions{
+      location: VscodeProgressLocation.window,
+      cancellable: false,
+      title: "Nim: check project...",
     },
-    proc(): Promise[seq[CheckResult]] = check(uri.fsPath, config)
-  ).then(proc(errors: seq[CheckResult]) =
-    diagnosticCollection.clear()
+    proc(): Promise[seq[CheckResult]] =
+      check(uri.fsPath, config),
+  )
+  .then(
+    proc(errors: seq[CheckResult]) =
+      diagnosticCollection.clear()
 
-    var diagnosticMap = newMap[cstring, Array[VscodeDiagnostic]]()
-    var err = newMap[cstring, bool]()
-    for error in errors:
-      var errorId = error.file & cstring($error.line) & cstring($error.column) & error.msg
-      if not err[errorId]:
-        var targetUri = error.file
+      var diagnosticMap = newMap[cstring, Array[VscodeDiagnostic]]()
+      var err = newMap[cstring, bool]()
+      for error in errors:
+        var errorId =
+          error.file & cstring($error.line) & cstring($error.column) & error.msg
+        if not err[errorId]:
+          var targetUri = error.file
 
-        var diagnostic = vscode.newDiagnostic(
+          var diagnostic = vscode.newDiagnostic(
             findErrorRange(error.msg, error.line, error.column),
             error.msg,
-            mapSeverityToVscodeSeverity(error.severity)
-        )
-        if error.stacktrace.len > 0:
-          diagnostic.relatedInformation = newArray[VscodeDiagnosticRelatedInformation]()
-          for entry in error.stacktrace:
-            diagnostic.relatedInformation.add(
-              vscode.newDiagnosticRelatedInformation(
-                vscode.newLocation(
-                  vscode.uriFile(entry.file),
-                  findErrorRange(entry.msg, entry.line,entry.column)),
-                entry.msg
-            ))
-        if not diagnosticMap.has(targetUri):
-          diagnosticMap[targetUri] = newArray[VscodeDiagnostic]()
-        diagnosticMap[targetUri].push(diagnostic)
-        err[errorId] = true
+            mapSeverityToVscodeSeverity(error.severity),
+          )
+          if error.stacktrace.len > 0:
+            diagnostic.relatedInformation =
+              newArray[VscodeDiagnosticRelatedInformation]()
+            for entry in error.stacktrace:
+              diagnostic.relatedInformation.add(
+                vscode.newDiagnosticRelatedInformation(
+                  vscode.newLocation(
+                    vscode.uriFile(entry.file),
+                    findErrorRange(entry.msg, entry.line, entry.column),
+                  ),
+                  entry.msg,
+                )
+              )
+          if not diagnosticMap.has(targetUri):
+            diagnosticMap[targetUri] = newArray[VscodeDiagnostic]()
+          diagnosticMap[targetUri].push(diagnostic)
+          err[errorId] = true
 
-    var entries: seq[array[0..1, JsObject]] = @[]
-    for uri, diags in diagnosticMap.entries:
-      entries.add([vscode.uriFile(uri).toJs(), diags.toJs()])
-    diagnosticCollection.set(entries)
-  ).catch(proc(reason: JsObject) =
-    console.error("nimvscode - runCheck Failed", reason))
+      var entries: seq[array[0 .. 1, JsObject]] = @[]
+      for uri, diags in diagnosticMap.entries:
+        entries.add([vscode.uriFile(uri).toJs(), diags.toJs()])
+      diagnosticCollection.set(entries)
+  )
+  .catch(
+    proc(reason: JsObject) =
+      console.error("nimvscode - runCheck Failed", reason)
+  )
 
 proc startBuildOnSaveWatcher(subscriptions: Array[VscodeDisposable]) =
   vscode.workspace.onDidSaveTextDocument(
     proc(document: VscodeTextDocument) =
       if document.languageId != "nim":
         return
-      
+
       var config = vscode.workspace.getConfiguration("nim")
       if config.getBool("lintOnSave"):
         runCheck(document)
@@ -226,7 +246,7 @@ proc startBuildOnSaveWatcher(subscriptions: Array[VscodeDisposable]) =
         vscode.commands.executeCommand("workbench.action.tasks.build")
     ,
     nil,
-    subscriptions
+    subscriptions,
   )
 
 proc runFile(ignore: bool, isDebug: bool = false): void =
@@ -246,11 +266,7 @@ proc runFile(ignore: bool, isDebug: bool = false): void =
 
     if editor.document.isUntitled:
       terminal.sendText(
-          nimBuildCmdStr &
-          runArg &
-          getDirtyFile(editor.document) &
-          "\"",
-          true
+        nimBuildCmdStr & runArg & getDirtyFile(editor.document) & "\"", true
       )
     else:
       var
@@ -266,31 +282,24 @@ proc runFile(ignore: bool, isDebug: bool = false): void =
           if rootPath != "":
             if not fs.existsSync(path.join(rootPath, outputDirConfig)):
               fs.mkdirSync(path.join(rootPath, outputDirConfig))
-            outputParams = " --out:\"" & path.join(
-                    outputDirConfig,
-                    path.basename(editor.document.fileName, ".nim")
+            outputParams =
+              " --out:\"" &
+              path.join(
+                outputDirConfig, path.basename(editor.document.fileName, ".nim")
               ) & "\""
 
       if editor.toJs().to(bool) and editor.document.isDirty:
-        editor.document.save().then(proc(success: bool): void =
-          if not (terminal.isNil() or editor.isNil()) and success:
-            terminal.sendText(
-                nimBuildCmdStr &
-                outputParams &
-                runArg &
-                editor.document.fileName &
-                "\"",
-                true
-            )
+        editor.document.save().then(
+          proc(success: bool): void =
+            if not (terminal.isNil() or editor.isNil()) and success:
+              terminal.sendText(
+                nimBuildCmdStr & outputParams & runArg & editor.document.fileName & "\"",
+                true,
+              )
         )
       else:
         terminal.sendText(
-            nimBuildCmdStr &
-            outputParams &
-            runArg &
-            editor.document.fileName &
-            "\"",
-            true
+          nimBuildCmdStr & outputParams & runArg & editor.document.fileName & "\"", true
         )
 
 proc debugFile() =
@@ -300,25 +309,26 @@ proc debugFile() =
     typ = config.getStr("debug.type")
     editor = vscode.window.activeTextEditor
     filename = editor.document.fileName
-    filePath = path.join(outputDirConfig, path.basename(editor.document.fileName).replace(".nim", ""))
+    filePath = path.join(
+      outputDirConfig, path.basename(editor.document.fileName).replace(".nim", "")
+    )
     workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri)
   #compiles the file
   runFile(ignore = false, isDebug = true)
   let debugConfiguration = VsCodeDebugConfiguration(
     name: "Nim: " & filename, `type`: typ, request: "launch", program: filePath
   )
-  discard vscode.debug.startDebugging(workspaceFolder, debugConfiguration)
-    .then(proc(success: bool) = console.log("Debugging started"))
+  discard vscode.debug.startDebugging(workspaceFolder, debugConfiguration).then(
+      proc(success: bool) =
+        console.log("Debugging started")
+    )
 
 proc onStartDebugSession(session: VscodeDebugSession) =
   ## load the nimprettylldb.py script into the debugger
-  let dirname {.importjs:"__dirname"}: cstring
+  let dirname {.importjs: "__dirname".}: cstring
   let pyScriptPath = path.join(dirname, "../scripts/nimprettylldb.py")
   let cmd = cstring(&"command script import {pyScriptPath}")
-  let arg = VscodeDebugExpression(
-    expression: cmd,
-    context: "repl"
-  )
+  let arg = VscodeDebugExpression(expression: cmd, context: "repl")
   discard session.customRequest("evaluate", arg)
 
 proc clearCachesCmd(): void =
@@ -334,14 +344,17 @@ proc setNimDir(state: ExtensionState) =
 
   let path = vscode.workspace.workspaceFolders[0].uri.fsPath
   var process = cp.spawn(
-      getNimbleExecPath(), @["dump".cstring],
-      SpawnOptions(shell: true, cwd: path))
+    getNimbleExecPath(), @["dump".cstring], SpawnOptions(shell: true, cwd: path)
+  )
 
-  process.stdout.onData(proc(data: Buffer) =
-    for line in splitLines($data.toString):
-     if line.startsWith("nimDir"):
-       state.nimDir = line[(1 + line.find '"')..^2]
-       outputLine(fmt"[info] Using NimDir from nimble dump. NimDir: {state.nimDir}".cstring)
+  process.stdout.onData(
+    proc(data: Buffer) =
+      for line in splitLines($data.toString):
+        if line.startsWith("nimDir"):
+          state.nimDir = line[(1 + line.find '"') ..^ 2]
+          outputLine(
+            fmt"[info] Using NimDir from nimble dump. NimDir: {state.nimDir}".cstring
+          )
   )
 
 proc showNimLangServerStatus() {.async.} =
@@ -354,7 +367,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
     ctx: ctx,
     config: config,
     channel: vscode.window.createOutputChannel("Nim"),
-    lspChannel: vscode.window.createOutputChannel("Nim Lsp")
+    lspChannel: vscode.window.createOutputChannel("Nim Lsp"),
   )
   nimUtils.ext = state
 
@@ -364,17 +377,23 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   vscode.commands.registerCommand("nim.run.file", runFile)
   vscode.commands.registerCommand("nim.debug.file", debugFile)
   vscode.commands.registerCommand("nim.check", runCheck)
-  vscode.commands.registerCommand("nim.restartNimsuggest", () => onLspSuggest("restart", "current"))
-  vscode.commands.registerCommand("nim.execSelectionInTerminal", execSelectionInTerminal)
+  vscode.commands.registerCommand(
+    "nim.restartNimsuggest", () => onLspSuggest("restart", "current")
+  )
+  vscode.commands.registerCommand(
+    "nim.execSelectionInTerminal", execSelectionInTerminal
+  )
   vscode.commands.registerCommand("nim.clearCaches", clearCachesCmd)
   vscode.commands.registerCommand("nim.listCandidateProjects", listCandidateProjects)
-  vscode.commands.registerCommand("nim.showNimLangServerStatus", showNimLangServerStatus)
+  vscode.commands.registerCommand(
+    "nim.showNimLangServerStatus", showNimLangServerStatus
+  )
   vscode.commands.registerCommand("nim.showNotification", onShowNotification)
   vscode.commands.registerCommand("nim.onDeleteNotification", onDeleteNotification)
-  vscode.commands.registerCommand("nim.onClearAllNotifications", onClearAllNotifications)
+  vscode.commands.registerCommand(
+    "nim.onClearAllNotifications", onClearAllNotifications
+  )
   vscode.commands.registerCommand("nim.onLspSuggest", onLspSuggest)
-  
-
 
   processConfig(config)
   discard vscode.workspace.onDidChangeConfiguration(configUpdate)
@@ -382,30 +401,43 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
 
   setNimDir(state)
   let provider = config.getStr("provider")
-  
+
   if provider == "lsp":
     await startLanguageServer(true, state)
     state.statusProvider = newNimLangServerStatusProvider()
     discard vscode.window.registerTreeDataProvider("nim", state.statusProvider)
-
   elif provider == "nimsuggest" and config.getBool("enableNimsuggest"):
     initNimSuggest()
-    ctx.subscriptions.add(vscode.languages.registerCompletionItemProvider(mode,
-        nimCompletionItemProvider, ".", " "))
-    ctx.subscriptions.add(vscode.languages.registerDefinitionProvider(mode,
-        nimDefinitionProvider))
-    ctx.subscriptions.add(vscode.languages.registerReferenceProvider(mode,
-        nimReferenceProvider))
-    ctx.subscriptions.add(vscode.languages.registerRenameProvider(mode,
-        nimRenameProvider))
-    ctx.subscriptions.add(vscode.languages.registerDocumentSymbolProvider(mode,
-        nimDocSymbolProvider))
-    ctx.subscriptions.add(vscode.languages.registerSignatureHelpProvider(mode,
-        nimSignatureProvider, "(", ","))
-    ctx.subscriptions.add(vscode.languages.registerHoverProvider(mode,
-        nimHoverProvider))
-    ctx.subscriptions.add(vscode.languages.registerDocumentFormattingEditProvider(
-        mode, nimFormattingProvider))
+    ctx.subscriptions.add(
+      vscode.languages.registerCompletionItemProvider(
+        mode, nimCompletionItemProvider, ".", " "
+      )
+    )
+    ctx.subscriptions.add(
+      vscode.languages.registerDefinitionProvider(mode, nimDefinitionProvider)
+    )
+    ctx.subscriptions.add(
+      vscode.languages.registerReferenceProvider(mode, nimReferenceProvider)
+    )
+    ctx.subscriptions.add(
+      vscode.languages.registerRenameProvider(mode, nimRenameProvider)
+    )
+    ctx.subscriptions.add(
+      vscode.languages.registerDocumentSymbolProvider(mode, nimDocSymbolProvider)
+    )
+    ctx.subscriptions.add(
+      vscode.languages.registerSignatureHelpProvider(
+        mode, nimSignatureProvider, "(", ","
+      )
+    )
+    ctx.subscriptions.add(
+      vscode.languages.registerHoverProvider(mode, nimHoverProvider)
+    )
+    ctx.subscriptions.add(
+      vscode.languages.registerDocumentFormattingEditProvider(
+        mode, nimFormattingProvider
+      )
+    )
   else:
     console.log("No backend selected.")
 
@@ -417,21 +449,25 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
     onEnterRules: newArrayWith[VscodeOnEnterRule](
       VscodeOnEnterRule{
         beforeText: newRegExp(r"^(\s)*## ", ""),
-        action: VscodeEnterAction{
-          indentAction: VscodeIndentAction.none,
-          appendText: "## "
-        }
+        action:
+          VscodeEnterAction{indentAction: VscodeIndentAction.none, appendText: "## "},
       },
       VscodeOnEnterRule{
-        beforeText: newRegExp("""
+        beforeText: newRegExp(
+          """
           ^\s*
           ( (case) \b .* : )
           \s*$
-          """.replace(newRegExp(r"\s+?", r"g"), ""), ""),
-        action: VscodeEnterAction{ indentAction: VscodeIndentAction.none }
+          """.replace(
+            newRegExp(r"\s+?", r"g"), ""
+          ),
+          "",
+        ),
+        action: VscodeEnterAction{indentAction: VscodeIndentAction.none},
       },
       VscodeOnEnterRule{
-        beforeText: newRegExp("""
+        beforeText: newRegExp(
+          """
           ^\s*
           (
             ((proc|macro|iterator|template|converter|func) \b .*=) |
@@ -439,43 +475,50 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
             ([^:]+:)
           )
           \s*$
-          """.replace(newRegExp(r"\s+?", r"g"), ""), ""),
-        action: VscodeEnterAction{ indentAction: VscodeIndentAction.indent }
+          """.replace(
+            newRegExp(r"\s+?", r"g"), ""
+          ),
+          "",
+        ),
+        action: VscodeEnterAction{indentAction: VscodeIndentAction.indent},
       },
       VscodeOnEnterRule{
-        beforeText: newRegExp("""
+        beforeText: newRegExp(
+          """
           ^\s*
           (
             ((return|raise|break|continue) \b .*) |
             ((discard) \b)
           )
           \s*
-          """.replace(newRegExp(r"\s+?", r"g"), ""), ""),
-        action: VscodeEnterAction{ indentAction: VscodeIndentAction.outdent }
-      }
+          """.replace(
+            newRegExp(r"\s+?", r"g"), ""
+          ),
+          "",
+        ),
+        action: VscodeEnterAction{indentAction: VscodeIndentAction.outdent},
+      },
     ),
     wordPattern: newRegExp(
       r"(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\""\,\.\<\>\/\?\s]+)",
-      r"g"
-    )
+      r"g",
+    ),
   }
   try:
-    vscode.languages.setLanguageConfiguration(
-      mode.language,
-      languageConfig
-    )
+    vscode.languages.setLanguageConfiguration(mode.language, languageConfig)
   except:
-    console.error("language configuration failed to set",
+    console.error(
+      "language configuration failed to set",
       getCurrentException(),
-      getCurrentExceptionMsg().cstring
+      getCurrentExceptionMsg().cstring,
     )
 
-  vscode.window.onDidChangeActiveTextEditor(showHideStatus, nil,
-    ctx.subscriptions)
+  vscode.window.onDidChangeActiveTextEditor(showHideStatus, nil, ctx.subscriptions)
 
-  vscode.window.onDidCloseTerminal(proc(e: VscodeTerminal) =
-    if terminal.toJs().to(bool) and e.processId == terminal.processId:
-      terminal = nil
+  vscode.window.onDidCloseTerminal(
+    proc(e: VscodeTerminal) =
+      if terminal.toJs().to(bool) and e.processId == terminal.processId:
+        terminal = nil
   )
 
   console.log(
@@ -492,42 +535,46 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
 
   let cfgFiles = vscode.workspace.getConfiguration("files")
   discard initWorkspace(
-            ctx.storagePath,
-            cfgFiles.getStrBoolMap("watcherExclude", defaultIndexExcludeGlobs)
+    ctx.storagePath, cfgFiles.getStrBoolMap("watcherExclude", defaultIndexExcludeGlobs)
+  )
+
+  fileWatcher = vscode.workspace.createFileSystemWatcher(cstring("**" / "*.nim"))
+  fileWatcher.onDidCreate(
+    proc(uri: VscodeUri) =
+      var licenseString = config.getStr("licenseString")
+      if not licenseString.isNil() and licenseString != "":
+        var path = uri.fsPath.toLowerAscii()
+        if path.endsWith(".nim") or path.endsWith(".nims"):
+          fs.stat(
+            uri.fsPath,
+            proc(err: ErrnoException, stats: FsStats) =
+              var edit = vscode.newWorkspaceEdit()
+              edit.insert(uri, vscode.newPosition(0, 0), licenseString)
+              vscode.workspace.applyEdit(edit),
           )
-
-  fileWatcher = vscode.workspace.createFileSystemWatcher(cstring("**"/"*.nim"))
-  fileWatcher.onDidCreate(proc(uri: VscodeUri) =
-    var licenseString = config.getStr("licenseString")
-    if not licenseString.isNil() and licenseString != "":
-      var path = uri.fsPath.toLowerAscii()
-      if path.endsWith(".nim") or path.endsWith(".nims"):
-        fs.stat(uri.fsPath, proc(err: ErrnoException, stats: FsStats) =
-          var edit = vscode.newWorkspaceEdit()
-          edit.insert(uri, vscode.newPosition(0, 0), licenseString)
-          vscode.workspace.applyEdit(edit)
-        )
-    discard addFileToImports(uri.fsPath)
+      discard addFileToImports(uri.fsPath)
   )
-  fileWatcher.onDidDelete(proc(uri: VscodeUri) =
-    discard removeFileFromImports(uri.fsPath)
+  fileWatcher.onDidDelete(
+    proc(uri: VscodeUri) =
+      discard removeFileFromImports(uri.fsPath)
   )
 
-  ctx.subscriptions.add(vscode.languages.registerWorkspaceSymbolProvider(nimWsSymbolProvider))
+  ctx.subscriptions.add(
+    vscode.languages.registerWorkspaceSymbolProvider(nimWsSymbolProvider)
+  )
 
   startBuildOnSaveWatcher(ctx.subscriptions)
 
-  if vscode.window.activeTextEditor.toJs().to(bool) and
-      config.getBool("lintOnSave"):
+  if vscode.window.activeTextEditor.toJs().to(bool) and config.getBool("lintOnSave"):
     runCheck(vscode.window.activeTextEditor.document)
 
-  if config.getBool("enableNimsuggest") and
-      config.getInt("nimsuggestRestartTimeout") > 0:
+  if config.getBool("enableNimsuggest") and config.getInt("nimsuggestRestartTimeout") > 0:
     var timeout = config.getInt("nimsuggestRestartTimeout")
     console.log(fmt"Reset nimsuggest process each {timeout} minutes".cstring)
     global.setInterval(
-      proc() = discard closeAllNimsuggestProcesses(),
-      timeout * 60000
+      proc() =
+        discard closeAllNimsuggestProcesses(),
+      timeout * 60000,
     )
 
   discard initImports()

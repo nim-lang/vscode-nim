@@ -7,7 +7,7 @@ import jsre
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
-proc `[]`*[T, U](s: cstring; x: HSlice[T, U]): cstring =
+proc `[]`*[T, U](s: cstring, x: HSlice[T, U]): cstring =
   ## Slices a JS string
   var l, h: int
   when T is BackwardsIndex:
@@ -25,7 +25,7 @@ proc `[]`*[T, U](s: cstring; x: HSlice[T, U]): cstring =
   return `s`.slice(`l`, `h`);
   """
 
-proc repeat*(s: cstring; n: Natural): cstring {.importcpp: "#.repeat(@)".}
+proc repeat*(s: cstring, n: Natural): cstring {.importcpp: "#.repeat(@)".}
   ## Returns string `s` concatenated `n` times.
 
 proc startsWith*(s, a: cstring): bool {.importcpp: "#.startsWith(@)".}
@@ -33,22 +33,22 @@ proc startsWith*(s, a: cstring): bool {.importcpp: "#.startsWith(@)".}
   ##
   ## If ``prefix == ""`` true is returned.
 
-proc endsWith*(s: cstring; suffix: cstring): bool {.importcpp: "#.endsWith(@)".}
+proc endsWith*(s: cstring, suffix: cstring): bool {.importcpp: "#.endsWith(@)".}
   ## Returns true if ``s`` ends with ``suffix``.
   ##
   ## If ``suffix == ""`` true is returned.
 
-proc find*(s: cstring; a: cstring): cint {.importcpp: "#.indexOf(@)".}
+proc find*(s: cstring, a: cstring): cint {.importcpp: "#.indexOf(@)".}
   ## Searches for `a` in `s`.
   ##
   ## Searching is case-sensitive. If `a` is not in `s`, -1 is returned.
 
-proc find*(s: cstring; a: RegExp): cint {.importcpp: "#.search(@)".}
+proc find*(s: cstring, a: RegExp): cint {.importcpp: "#.search(@)".}
 
-proc match*(s: cstring; a: RegExp): seq[cstring] {.importcpp.}
+proc match*(s: cstring, a: RegExp): seq[cstring] {.importcpp.}
   ## Retrieves the result of matching a string against a regular expression.
 
-proc findLast*(s: cstring; a: cstring): cint {.importcpp: "#.lastIndexOf(@)".}
+proc findLast*(s: cstring, a: cstring): cint {.importcpp: "#.lastIndexOf(@)".}
   ## Searches for `a` in `s`.
   ##
   ## Searching is case-sensitive. If `a` is not in `s`, -1 is returned.
@@ -60,12 +60,12 @@ proc contains*(s, sub: cstring): bool {.noSideEffect.} =
   ## * `find proc<#find,string,string,Natural,int>`_
   return find(s, sub) >= 0
 
-proc split*(s: cstring; a: cstring): seq[cstring] {.importcpp: "#.split(@)".}
+proc split*(s: cstring, a: cstring): seq[cstring] {.importcpp: "#.split(@)".}
   ## Splits the string `s` into substrings using a single separator.
   ##
   ## Substrings are separated by the character `sep`.
 
-proc split*(s: cstring; a: RegExp): seq[cstring] {.importcpp: "#.split(@)".}
+proc split*(s: cstring, a: RegExp): seq[cstring] {.importcpp: "#.split(@)".}
   ## Splits the string `s` into substrings using a regex separator.
   ##
   ## Substrings are separated by the character `sep`.
@@ -80,13 +80,12 @@ proc toUpperAscii*(s: cstring): cstring {.importcpp: "#.toUpperCase()".}
   ##
   ## This works only for the letters ``A-Z``.
 
-proc replace*(s, sub: cstring; by = cstring""): cstring {.
-    importcpp: "#.replace(#, #)".}
+proc replace*(s, sub: cstring, by = cstring""): cstring {.importcpp: "#.replace(#, #)".}
   ## Replaces `sub` in `s` by the string `by`.
 
-proc replace*(s: cstring; sub: RegExp; by = cstring""): cstring {.
-    importcpp: "#.replace(#, #)".}
-  ## Replaces `sub` in `s` by the string `by`.
+proc replace*(
+  s: cstring, sub: RegExp, by = cstring""
+): cstring {.importcpp: "#.replace(#, #)".} ## Replaces `sub` in `s` by the string `by`.
 
 proc strip*(s: cstring): cstring {.importcpp: "#.trim()".}
   ## Strips leading or trailing spaces
@@ -98,17 +97,18 @@ proc parseFloatJS*(s: cstring): float {.importcpp: "parseFloat(@)".}
 proc parseCint*(s: cstring): cint {.importcpp: "parseInt(@)".}
   ## Parses an int value contained in `s`
   ## Using JS's native float parsing function
-proc parseCint*(s: cstring; radix: cint): cint {.importcpp: "parseInt(@)".}
+
+proc parseCint*(s: cstring, radix: cint): cint {.importcpp: "parseInt(@)".}
   ## Parses an int value contained in `s` with the given radix
   ## Using JS's native float parsing function
 
-proc join*(s: seq[cstring]; sep: cstring): cstring {.importcpp: "#.join(@)".}
+proc join*(s: seq[cstring], sep: cstring): cstring {.importcpp: "#.join(@)".}
   ## Join an array of strings into a single string
 
 proc toString*(i: int): cstring {.importcpp: "(#.toString(@))".}
   ## Convert an int to a string
 
-proc toString*(i: int; radix: Natural): cstring {.importcpp: "(#.toString(@))".}
+proc toString*(i: int, radix: Natural): cstring {.importcpp: "(#.toString(@))".}
   ## Convert an int to a string given a radix
 
 when isMainModule:
@@ -121,16 +121,15 @@ when isMainModule:
 
   assert a & b == cstring "hello world!"
   assert a[0] == 'h'
-  assert (a & b)[2..10] == cstring "llo world"
+  assert (a & b)[2 .. 10] == cstring "llo world"
 
-  assert "hello world!"[2..10] == cstring "llo world"
+  assert "hello world!"[2 .. 10] == cstring "llo world"
 
   assert cstring("Hi There!").toLowerAscii() == cstring "hi there!"
   assert cstring("Hi There!").toUpperAscii() == cstring "HI THERE!"
 
   assert split(cstring ";;this;is;an;;example;;;", ";") ==
     @[cstring"", "", "this", "is", "an", "", "example", "", "", ""]
-
 
   assert cstring("hi there").find(cstring "there") == 3
   assert cstring("hi there").contains(cstring "there") == true
@@ -143,7 +142,8 @@ when isMainModule:
   assert cstring("hi there").startsWith(cstring(""))
   assert cstring("hi there").endsWith(cstring(""))
 
-  assert cstring("hi there").replace(cstring("hi"), cstring("bye")) == cstring("bye there")
+  assert cstring("hi there").replace(cstring("hi"), cstring("bye")) ==
+    cstring("bye there")
 
   assert cstring("  hi there     ").strip() == "hi there"
 

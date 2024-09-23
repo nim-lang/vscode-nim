@@ -7,8 +7,7 @@ type
   TextEncoder* = ref object
 
 # util
-proc newTextEncoder*(u: Util): TextEncoder {.
-    importcpp: "(new #.TextEncoder(@))".}
+proc newTextEncoder*(u: Util): TextEncoder {.importcpp: "(new #.TextEncoder(@))".}
 
 # TextEncoder
 proc encode*(enc: TextEncoder, content: cstring): seq[uint8] {.importcpp.}

@@ -9,8 +9,7 @@ type
     delimiter*: cstring
     platform*: cstring # should be an enum like thing
 
-  ParsedPath* = ref object
-    # The root of the path such as '/' or 'c:\'
+  ParsedPath* = ref object # The root of the path such as '/' or 'c:\'
     root*: cstring
     # The full directory path such as '/home/user/dir' or 'c:\path\dir'
     dir*: cstring

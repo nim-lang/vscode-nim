@@ -9,7 +9,8 @@ import nimsuggest/sexp
 
 type
   QueueState {.pure.} = enum
-    blocked, flowing
+    blocked
+    flowing
 
   EPCPeer* = ref object
     id: cint
@@ -26,8 +27,10 @@ proc envelop(content: cstring): cstring =
   var
     strLen = content.len
     length = util.newTextEncoder().encode(content).len
-    hexLength = ("000000" & length.toString(16))[^6..^1]
-  console.log(fmt"strLen:{strLen}, length:{length}, hexLength:{hexLength}, content:{content}".cstring)
+    hexLength = ("000000" & length.toString(16))[^6 ..^ 1]
+  console.log(
+    fmt"strLen:{strLen}, length:{length}, hexLength:{hexLength}, content:{content}".cstring
+  )
   return hexLength & content
 
 proc generateUid(epc: EPCPeer): cint =
@@ -35,7 +38,8 @@ proc generateUid(epc: EPCPeer): cint =
   return uidSeq
 
 proc write(epc: EPCPeer, msg: cstring): void =
-  if epc.socketClosed: return # ignore the rest
+  if epc.socketClosed:
+    return # ignore the rest
   case epc.queueState
   of blocked:
     console.log(epc.id, "blocked write - queueing msg:", msg)
@@ -45,7 +49,10 @@ proc write(epc: EPCPeer, msg: cstring): void =
     console.log(epc.id, fmt"flowing write {expectedBytes} msg:".cstring, msg)
     var flushed = epc.socket.write(msg)
     if expectedBytes != epc.socket.bytesWritten:
-      console.error(epc.id, fmt"Bytes written expected {expectedBytes}, actual {epc.socket.bytesWritten}".cstring)
+      console.error(
+        epc.id,
+        fmt"Bytes written expected {expectedBytes}, actual {epc.socket.bytesWritten}".cstring,
+      )
     if not flushed:
       console.log(epc.id, "write blocked")
       epc.queueState = QueueState.blocked
@@ -71,34 +78,38 @@ proc newEPCPeer(id: cint, socket: NetSocket): EPCPeer =
     sessions: newMap[cint, proc(d: seq[SExpNode])](),
     socketClosed: false,
     queueState: QueueState.flowing,
-    queue: @[]
+    queue: @[],
   )
 
-  epc.socket.onData(proc(data: Buffer) =
-    if data.toJs().to(bool):
-      epc.receivedBuffer = bufferConcat(newArrayWith[Buffer](epc.receivedBuffer, data))
-    while epc.receivedBuffer.len > 0:
-      if epc.receivedBuffer.len >= 6:
-        var length = parseCint(epc.receivedBuffer.toStringUtf8(0, 6), 16)
-        if epc.receivedBuffer.len >= (length + 6):
-          try:
-            console.log(epc.id, "onData - receieved")
-            var content = parseSexp($(epc.receivedBuffer.toStringUtf8(6, 6 + length)))
-            if not content.isNil():
-              var contentSexp: seq[SExpNode] = content.getElems()
-              var guid = cint(contentSexp[1].getNum())
-              var handle = epc.sessions[guid]
-              console.log(fmt"{epc.id} onData - handling:{guid} length:{length}".cstring)
-              handle(contentSexp)
-              epc.sessions.delete(guid)
-          except:
-            for session in epc.sessions.values():
-              session("Received invalid SExp data".toJs().to(seq[SexpNode]))
-          finally:
-            epc.receivedBuffer = epc.receivedBuffer.slice(6 + length)
-        else:
-          # input not complete, wait for input
-          console.log(
+  epc.socket.onData(
+    proc(data: Buffer) =
+      if data.toJs().to(bool):
+        epc.receivedBuffer =
+          bufferConcat(newArrayWith[Buffer](epc.receivedBuffer, data))
+      while epc.receivedBuffer.len > 0:
+        if epc.receivedBuffer.len >= 6:
+          var length = parseCint(epc.receivedBuffer.toStringUtf8(0, 6), 16)
+          if epc.receivedBuffer.len >= (length + 6):
+            try:
+              console.log(epc.id, "onData - receieved")
+              var content = parseSexp($(epc.receivedBuffer.toStringUtf8(6, 6 + length)))
+              if not content.isNil():
+                var contentSexp: seq[SExpNode] = content.getElems()
+                var guid = cint(contentSexp[1].getNum())
+                var handle = epc.sessions[guid]
+                console.log(
+                  fmt"{epc.id} onData - handling:{guid} length:{length}".cstring
+                )
+                handle(contentSexp)
+                epc.sessions.delete(guid)
+            except:
+              for session in epc.sessions.values():
+                session("Received invalid SExp data".toJs().to(seq[SexpNode]))
+            finally:
+              epc.receivedBuffer = epc.receivedBuffer.slice(6 + length)
+          else:
+            # input not complete, wait for input
+            console.log(
               epc.id,
               "onData - incomplete data, current:",
               epc.receivedBuffer.len,
@@ -106,44 +117,42 @@ proc newEPCPeer(id: cint, socket: NetSocket): EPCPeer =
               length + 6,
               "preview:",
               epc.receivedBuffer.toStringUtf8(
-                  0,
-                  cint(Math.min(50, Math.max(epc.receivedBuffer.len, 6)))
+                0, cint(Math.min(50, Math.max(epc.receivedBuffer.len, 6)))
+              ),
             )
-          )
+            return
+        else:
+          # wait for more input
+          console.log(epc.id, "onData - no hexbytes, current:", epc.receivedBuffer.len)
           return
-      else:
-        # wait for more input
-        console.log(
-          epc.id,
-          "onData - no hexbytes, current:",
-          epc.receivedBuffer.len
-        )
-        return
   )
 
-  epc.socket.onDrain(proc(): void = epc.onDrain())
+  epc.socket.onDrain(
+    proc(): void =
+      epc.onDrain()
+  )
 
-  epc.socket.onClose(proc(error: bool) =
-    if error:
-      console.error(epc.id, "Connection closed due to an error")
-    else:
-      console.log(epc.id, "Connection closed")
-    epc.socket.destroy()
-    for session in epc.sessions.values():
-      session("Connection closed".toJs().to(seq[SexpNode]))
-    epc.socketClosed = true
-    epc.queue = @[]
-    epc.queueState = QueueState.blocked
+  epc.socket.onClose(
+    proc(error: bool) =
+      if error:
+        console.error(epc.id, "Connection closed due to an error")
+      else:
+        console.log(epc.id, "Connection closed")
+      epc.socket.destroy()
+      for session in epc.sessions.values():
+        session("Connection closed".toJs().to(seq[SexpNode]))
+      epc.socketClosed = true
+      epc.queue = @[]
+      epc.queueState = QueueState.blocked
   )
 
   return epc
 
-proc callMethod*(epc: EPCPeer, meth: cstring, params: seq[SExpNode]): Promise[
-    seq[SExpNode]] =
-  return newPromise(proc(
-      resolve: proc(data: seq[SExpNode]),
-      reject: proc(reason: JsObject)
-    ) =
+proc callMethod*(
+    epc: EPCPeer, meth: cstring, params: seq[SExpNode]
+): Promise[seq[SExpNode]] =
+  return newPromise(
+    proc(resolve: proc(data: seq[SExpNode]), reject: proc(reason: JsObject)) =
       if epc.socketClosed:
         reject("Connection closed".toJs())
 
@@ -154,9 +163,12 @@ proc callMethod*(epc: EPCPeer, meth: cstring, params: seq[SExpNode]): Promise[
           reject(data.toJs())
         else:
           case (data[0].getSymbol())
-          of "return": resolve(data[2].getElems())
-          of "return-error", "epc-error": reject(data[2].toJs())
-          else: console.error("Unknown error handling sexp")
+          of "return":
+            resolve(data[2].getElems())
+          of "return-error", "epc-error":
+            reject(data[2].toJs())
+          else:
+            console.error("Unknown error handling sexp")
 
       epc.write(envelop(payload.cstring))
   )
@@ -167,21 +179,22 @@ proc stop*(epc: EPCPeer): void =
     epc.socket.`end`()
 
 proc startClient*(id, port: cint): Promise[EPCPeer] =
-  return newPromise(proc(
-      resolve: proc(e: EPCPeer),
-      reject: proc(reason: JsObject)
-    ) =
+  return newPromise(
+    proc(resolve: proc(e: EPCPeer), reject: proc(reason: JsObject)) =
       try:
         var socket: NetSocket
-        socket = net.createConnection(port, "localhost", proc() =
-          resolve(newEPCPeer(id, socket))
+        socket = net.createConnection(
+          port,
+          "localhost",
+          proc() =
+            resolve(newEPCPeer(id, socket)),
         )
       except:
         console.error(
-            "Failed to start client with message: '",
-            getCurrentExceptionMsg().cstring,
-            "' see exception:",
-            getCurrentException()
+          "Failed to start client with message: '",
+          getCurrentExceptionMsg().cstring,
+          "' see exception:",
+          getCurrentException(),
         )
         reject(getCurrentException().toJs())
   )
