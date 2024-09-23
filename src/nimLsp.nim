@@ -377,6 +377,13 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
     state.client.onNotification(
       "extension/statusUpdate",
       proc(params: JsObject) =
+        if params.projectErrors.isUndefined:
+          params.projectErrors = newSeq[ProjectError]()
+        if params.pendingRequests.isUndefined:
+          params.pendingRequests = newSeq[PendingRequestStatus]()
+        if params.extensionCapabilities.isUndefined:
+          params.extensionCapabilities = newSeq[cstring]()
+      
         let lspStatus = jsonStringify(params).jsonParse(NimLangServerStatus)
         # outputLine("Received status update " & jsonStringify(params))
         refreshLspStatus(state.statusProvider, lspStatus),
@@ -641,10 +648,10 @@ proc getChildrenImpl(
             "Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None
           )
         ]
-    if element.label == "LSP Status":
-      var topElements =
+    if element.label == "LSP Status":      
+      var topElements =      
         @[
-          newLspItem("Langserver", self.status.get.lspPath),
+          newLspItem("Langserver",  self.status.get.lspPath),
           newLspItem("Version", self.status.get.version),
           newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Expanded),
         ] &
@@ -782,6 +789,7 @@ proc newNimLangServerStatusProvider*(): NimLangServerStatusProvider =
 proc refreshLspStatus*(
     self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus
 ) =
+  # console.log(lspStatus)
   self.status = some(lspStatus)
   self.emitter.fire(nil)
   # console.log(lspStatus.projectErrors)
