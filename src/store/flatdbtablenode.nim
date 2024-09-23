@@ -73,7 +73,7 @@ iterator values*(table: FlatDbTable): JsObject =
 
 iterator valuesReverse*(table: FlatDbTable): JsObject =
   # for elem in table.data.items.tail:
-    # yield elem
+  # yield elem
   var it = table.data.tail
   while it != nil:
     yield it.value.value
@@ -137,16 +137,16 @@ when isMainModule:
     table.add("id2", t2)
 
     let entry = table["id1"]
-    entry["foo"] = % "klaus"
+    entry["foo"] = %"klaus"
     assert toSeq(table.pairs) == @[("id1", jsonStr{"foo": "klaus"}), ("id2", t2)]
 
     table["id2"] = jsonStr{"klaus": "klauspeter"}
-    assert toSeq(table.pairs) == @[("id1", jsonStr{"foo": "klaus"}), ("id2",
-        jsonStr{"klaus": "klauspeter"})]
+    assert toSeq(table.pairs) ==
+      @[("id1", jsonStr{"foo": "klaus"}), ("id2", jsonStr{"klaus": "klauspeter"})]
 
   block:
     var table = newFlatDbTable()
-    for idx in 0..10_000:
+    for idx in 0 .. 10_000:
       var t1 = jsonStr{"foo": idx}
     table.add($idx, t1)
 

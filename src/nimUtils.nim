@@ -10,25 +10,29 @@ var ext*: ExtensionState
 
 # Bridging code while refactoring state around - start
 
-template extensionContext(): VscodeExtensionContext = ext.ctx
-template channel(): VscodeOutputChannel = ext.channel
+template extensionContext(): VscodeExtensionContext =
+  ext.ctx
+
+template channel(): VscodeOutputChannel =
+  ext.channel
 
 # Bridging code while refactoring state around - end
 
 proc isSubpath(parent, child: cstring): bool =
-  result = if process.platform == "win32":
-             child.toLowerAscii.startsWith(parent.toLowerAscii)
-           else:
-             child.startsWith(parent.toLowerAscii)
+  result =
+    if process.platform == "win32":
+      child.toLowerAscii.startsWith(parent.toLowerAscii)
+    else:
+      child.startsWith(parent.toLowerAscii)
 
 proc isWorkspaceFile*(filePath: cstring): bool =
   ## Returns true if filePath is related to any workspace file
   ## assumes filePath is absolute
 
   if vscode.workspace.workspaceFolders.toJs().to(bool):
-    return vscode.workspace.workspaceFolders
-      .anyIt(it.uri.scheme == "file" and
-             isSubpath(it.uri.fsPath, filePath))
+    return vscode.workspace.workspaceFolders.anyIt(
+      it.uri.scheme == "file" and isSubpath(it.uri.fsPath, filePath)
+    )
   else:
     return false
 
@@ -52,7 +56,7 @@ proc getDirtyFile*(nimsuggestPid: cint, filepath, content: cstring): cstring =
   ## temporary file path of edited document
   ## for each nimsuggest instance each file has a unique dirty file
   var dirtyFilePath = path.normalize(
-      path.join(getDirtyFileFolder(nimsuggestPid), cstring($int(hash(filepath))) & ".nim")
+    path.join(getDirtyFileFolder(nimsuggestPid), cstring($int(hash(filepath))) & ".nim")
   )
   fs.writeFileSync(dirtyFilePath, content)
   return dirtyFilePath
@@ -61,15 +65,15 @@ proc getDirtyFile*(doc: VscodeTextDocument): cstring =
   ## temporary file path of edited document
   ## returns always the same file, so it shouldn't
   ## be used for nimsuggest, only nimpretty!
-  var dirtyFilePath = path.normalize(
-      path.join(extensionContext.storagePath, "vscodenimdirty.nim")
-  )
+  var dirtyFilePath =
+    path.normalize(path.join(extensionContext.storagePath, "vscodenimdirty.nim"))
   fs.writeFileSync(dirtyFilePath, doc.getText())
   return dirtyFilePath
 
 proc padStart(len: cint, input: cstring): cstring =
   var output = cstring("0").repeat(input.len)
   return output & input
+
 proc cleanDateString(date: DateTime): cstring =
   var year = date.getFullYear()
   var month = padStart(2, cstring($(date.getMonth())))

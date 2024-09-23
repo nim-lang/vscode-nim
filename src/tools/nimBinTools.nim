@@ -8,28 +8,34 @@ import ../[spec, nimUtils]
 var binPathsCache = newMap[cstring, cstring]()
 
 proc getBinPath*(tool: cstring, initialSearchPaths: openArray[cstring] = []): cstring =
-  if binPathsCache[tool].toJs().to(bool): return binPathsCache[tool]
+  if binPathsCache[tool].toJs().to(bool):
+    return binPathsCache[tool]
   if not process.env["PATH"].isNil():
     # USERPROFILE is the standard equivalent of HOME on windows.
     let userHomeVarName = if process.platform == "win32": "USERPROFILE" else: "HOME"
 
     # add support for choosenim
-    let fullEnvPath = path.join(process.env[userHomeVarName], ".nimble", "bin") &
-      path.delimiter & process.env["PATH"]
+    let fullEnvPath =
+      path.join(process.env[userHomeVarName], ".nimble", "bin") & path.delimiter &
+      process.env["PATH"]
 
-    let pathParts: seq[cstring] = concat(
-      @initialSearchPaths,
-      fullEnvPath.split(path.delimiter)
-    )
+    let pathParts: seq[cstring] =
+      concat(@initialSearchPaths, fullEnvPath.split(path.delimiter))
 
-    let endings = if process.platform == "win32": @[".exe", ".cmd", ""]
-                  else: @[""]
+    let endings =
+      if process.platform == "win32":
+        @[".exe", ".cmd", ""]
+      else:
+        @[""]
 
-    let paths = pathParts.mapIt(
+    let paths = pathParts
+      .mapIt(
         block:
           var dir = it
-          endings.mapIt(path.join(dir, tool & cstring(it))))
-      .foldl(a & b)# flatten nested arays
+          endings.mapIt(path.join(dir, tool & cstring(it)))
+      )
+      .foldl(a & b)
+      # flatten nested arays
       .filterIt(fs.existsSync(it))
 
     if paths.len == 0:
@@ -41,14 +47,19 @@ proc getBinPath*(tool: cstring, initialSearchPaths: openArray[cstring] = []): cs
         var nimPath: cstring
         case $(process.platform)
         of "darwin":
-          nimPath = cp.execFileSync("readlink", @[binPathsCache[tool]]).toString().strip()
+          nimPath =
+            cp.execFileSync("readlink", @[binPathsCache[tool]]).toString().strip()
           if nimPath.len > 0 and not path.isAbsolute(nimPath):
-            nimPath = path.normalize(path.join(path.dirname(binPathsCache[tool]), nimPath))
+            nimPath =
+              path.normalize(path.join(path.dirname(binPathsCache[tool]), nimPath))
         of "linux":
-          nimPath = cp.execFileSync("readlink", @[cstring("-f"), binPathsCache[
-              tool]]).toString().strip()
+          nimPath = cp
+            .execFileSync("readlink", @[cstring("-f"), binPathsCache[tool]])
+            .toString()
+            .strip()
         else:
-          nimPath = cp.execFileSync("readlink", @[binPathsCache[tool]]).toString().strip()
+          nimPath =
+            cp.execFileSync("readlink", @[binPathsCache[tool]]).toString().strip()
 
         if nimPath.len > 0:
           binPathsCache[tool] = nimPath
@@ -62,8 +73,8 @@ proc getNimExecPath*(executable: cstring = "nim"): cstring =
   var initialPaths = newSeq[cstring]()
 
   if executable == "nim" and ext.nimDir != "":
-      # use the nimDir from nimble as the initial search path when it's set.
-      initialPaths.add(ext.nimDir.cstring)
+    # use the nimDir from nimble as the initial search path when it's set.
+    initialPaths.add(ext.nimDir.cstring)
 
   result = getBinPath(executable, initialPaths)
   if result.isNil():

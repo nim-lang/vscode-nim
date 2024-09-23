@@ -25,14 +25,15 @@ proc showHideStatus*(): void =
 
   statusBarEntry.hide()
 
-proc hideNimStatus*() = statusBarEntry.dispose()
-proc hideNimProgress*() = progressBarEntry.dispose()
+proc hideNimStatus*() =
+  statusBarEntry.dispose()
+
+proc hideNimProgress*() =
+  progressBarEntry.dispose()
 
 proc showNimStatus*(msg: cstring, cmd: cstring, tooltip: cstring): void =
-  statusBarEntry = vscode.window.createStatusBarItem(
-    VscodeStatusBarAlignment.right,
-    numberMinValue
-  )
+  statusBarEntry =
+    vscode.window.createStatusBarItem(VscodeStatusBarAlignment.right, numberMinValue)
   statusBarEntry.text = msg
   statusBarEntry.command = cmd
   statusBarEntry.color = "yellow"
@@ -40,13 +41,12 @@ proc showNimStatus*(msg: cstring, cmd: cstring, tooltip: cstring): void =
   statusBarEntry.show()
 
 proc showNimProgress*(msg: cstring): void =
-  progressBarEntry = vscode.window.createStatusBarItem(
-    VscodeStatusBarAlignment.right,
-    numberMinValue
-  )
+  progressBarEntry =
+    vscode.window.createStatusBarItem(VscodeStatusBarAlignment.right, numberMinValue)
   console.log(msg)
   progressBarEntry.text = msg
   progressBarEntry.tooltip = msg
   progressBarEntry.show()
 
-proc updateNimProgress*(msg: cstring): void = progressBarEntry.text = msg
+proc updateNimProgress*(msg: cstring): void =
+  progressBarEntry.text = msg

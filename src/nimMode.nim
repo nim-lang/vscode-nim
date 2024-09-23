@@ -4,7 +4,4 @@
 
 import platform/vscodeApi
 
-var mode*: VscodeDocumentFilter = VscodeDocumentFilter{
-  language: "nim",
-  scheme: "file"
-}
+var mode*: VscodeDocumentFilter = VscodeDocumentFilter{language: "nim", scheme: "file"}

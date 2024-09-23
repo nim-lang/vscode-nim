@@ -14,7 +14,6 @@ type
   # MapKeyIterResultObj[K] {.importc.} = object of JsRoot
   #     value*:K
   #     done*:bool
-
   Buffer* = ref BufferObj
   BufferObj {.importc.} = object of JsRoot
     len* {.importcpp: "length".}: cint
@@ -42,14 +41,20 @@ proc bufferConcat*(b: Array[Buffer]): Buffer {.importcpp: "(Buffer.concat(@))".}
 proc bufferAlloc*(size: cint): Buffer {.importcpp: "(Buffer.alloc(@))".}
 
 # global
-proc setInterval*(g: GlobalModule, f: proc(): void, t: cint): Timeout {.importcpp, discardable.}
-proc setTimeout*(g: GlobalModule, f: proc(): void, t: cint): Timeout {.importcpp, discardable.}
+proc setInterval*(
+  g: GlobalModule, f: proc(): void, t: cint
+): Timeout {.importcpp, discardable.}
+
+proc setTimeout*(
+  g: GlobalModule, f: proc(): void, t: cint
+): Timeout {.importcpp, discardable.}
+
 proc clearInterval*(g: GlobalModule, t: Timeout): void {.importcpp.}
 
 # Array
 proc `[]`*[T](a: Array[T], idx: cint): T {.importcpp: "#[#]".}
 proc `[]`*[T](a: Array[T], idx: int): T {.importcpp: "#[#]".}
-proc `[]=`*[T](a: Array[T],idx: cint, val: T): T {.importcpp: "#[#]=#".}
+proc `[]=`*[T](a: Array[T], idx: cint, val: T): T {.importcpp: "#[#]=#".}
 proc push*[T](a: Array[T], val: T): cint {.discardable, importcpp.}
 proc add*[T](a: Array[T], val: T) {.importcpp: "#.push(#)".}
 proc pop*[T](a: Array[T]): T {.importcpp.}
@@ -75,8 +80,7 @@ iterator pairs*[T](a: Array[T]): (cint, T) =
 
 # Map
 proc `[]`*[K, V](m: Map[K, V], key: K): V {.importcpp: "#.get(@)".}
-proc `[]=`*[K, V](m: Map[K, V], key: K, value: V): void {.
-    importcpp: "#.set(@)".}
+proc `[]=`*[K, V](m: Map[K, V], key: K, value: V): void {.importcpp: "#.set(@)".}
 proc delete*[K, V](m: Map[K, V], key: K): bool {.importcpp, discardable.}
 proc clear*[K, V](m: Map[K, V]) {.importcpp.}
 proc has*[K, V](m: Map[K, V], key: K): bool {.importcpp.}
@@ -115,10 +119,11 @@ iterator entries*[K, V](m: Map[K, V]): (K, V) =
 
 # Buffer
 proc toString*(b: Buffer): cstring {.importcpp.}
-proc toStringBase64*(b: Buffer): cstring
-    {.importcpp: "(#.toString('base64'))".}
-proc toStringUtf8*(b: Buffer, start: cint, stop: cint): cstring
-    {.importcpp: "(#.toString('utf8', #, #))".}
+proc toStringBase64*(b: Buffer): cstring {.importcpp: "(#.toString('base64'))".}
+proc toStringUtf8*(
+  b: Buffer, start: cint, stop: cint
+): cstring {.importcpp: "(#.toString('utf8', #, #))".}
+
 proc slice*(b: Buffer, start: cint): Buffer {.importcpp.}
 
 # JSON
@@ -126,9 +131,11 @@ proc jsonStringify*[T](val: T): cstring {.importcpp: "JSON.stringify(@)".}
 proc toJsonStr(x: NimNode): NimNode {.compileTime.} =
   result = newNimNode(nnkTripleStrLit)
   result.strVal = astGenRepr(x)
+
 template jsonStr*(x: untyped): untyped =
   ## Convert an expression to a JSON string directly, without quote
   result = toJsonStr(x)
+
 proc jsonParse*(val: cstring): JsObject {.importcpp: "JSON.parse(@)".}
 proc jsonParse*(val: cstring, T: typedesc): T {.importcpp: "JSON.parse(@)".}
 

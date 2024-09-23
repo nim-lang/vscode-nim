@@ -12,8 +12,7 @@ from std/jscore import Math, max
 
 import nimStatus, nimSuggestExec
 
-let
-  dbVersion: cint = 5
+let dbVersion: cint = 5
 
 var
   dbFiles: FlatDb
@@ -25,8 +24,7 @@ type
     timestamp*: cint
 
   SymbolData = ref object
-    ws*: cstring
-      ## TODO should be named more like workspace folder, not ws (workspace)
+    ws*: cstring ## TODO should be named more like workspace folder, not ws (workspace)
     file*: cstring
     range_start*: VscodePosition
     range_end*: VscodePosition
@@ -52,45 +50,45 @@ proc vscodeKindFromNimSym(kind: cstring): VscodeSymbolKind =
   else: VscodeSymbolKind.property
 
 proc getFileSymbols*(
-    file: cstring,
-    useDirtyFile: bool,
-    dirtyFileContent: cstring = ""
-):
-    Future[seq[VscodeSymbolInformation]] {.async.} =
+    file: cstring, useDirtyFile: bool, dirtyFileContent: cstring = ""
+): Future[seq[VscodeSymbolInformation]] {.async.} =
   console.log(
-      "getFileSymbols - execnimsuggest - useDirtyFile",
-      $(NimSuggestType.outline),
-      file,
-      useDirtyFile
+    "getFileSymbols - execnimsuggest - useDirtyFile",
+    $(NimSuggestType.outline),
+    file,
+    useDirtyFile,
   )
   var items = await nimSuggestExec.execNimSuggest(
-      NimSuggestType.outline,
-      file,
-      0,
-      0,
-      useDirtyFile,
-      dirtyFileContent
+    NimSuggestType.outline, file, 0, 0, useDirtyFile, dirtyFileContent
   )
 
   var symbols: seq[VscodeSymbolInformation] = @[]
   var exists: seq[cstring] = @[]
 
-  var res = if items.toJs().to(bool): items else: @[]
+  var res =
+    if items.toJs().to(bool):
+      items
+    else:
+      @[]
   try:
     for item in res:
       # skip let and var in proc and methods
-      if item.suggest in ["skLet".cstring, "skVar"] and
-         item.names.len >= 2: # module name + fn name
-           continue
+      if item.suggest in ["skLet".cstring, "skVar"] and item.names.len >= 2:
+        # module name + fn name
+        continue
 
       var toAdd = $(item.column) & ":" & $(item.line)
-      if not any(exists, proc(x: cstring): bool = x == toAdd.cstring):
+      if not any(
+        exists,
+        proc(x: cstring): bool =
+          x == toAdd.cstring,
+      ):
         exists.add(toAdd.cstring)
         var symbolInfo = vscode.newSymbolInformation(
-            item.symbolname,
-            vscodeKindFromNimSym(item.suggest),
-            item.containerName,
-            item.location
+          item.symbolname,
+          vscodeKindFromNimSym(item.suggest),
+          item.containerName,
+          item.location,
         )
         symbols.add(symbolInfo)
   except:
@@ -100,27 +98,25 @@ proc getFileSymbols*(
   return symbols
 
 proc getDocumentSymbols*(
-    file: cstring,
-    useDirtyFile: bool,
-    dirtyFileContent: cstring = ""
+    file: cstring, useDirtyFile: bool, dirtyFileContent: cstring = ""
 ): Future[seq[VscodeDocumentSymbol]] {.async.} =
   console.log(
-      "getDocumentSymbols - execnimsuggest - useDirtyFile",
-      $(NimSuggestType.outline),
-      file,
-      useDirtyFile
+    "getDocumentSymbols - execnimsuggest - useDirtyFile",
+    $(NimSuggestType.outline),
+    file,
+    useDirtyFile,
   )
   var items = await nimSuggestExec.execNimSuggest(
-      NimSuggestType.outline,
-      file,
-      0,
-      0,
-      useDirtyFile,
-      dirtyFileContent)
+    NimSuggestType.outline, file, 0, 0, useDirtyFile, dirtyFileContent
+  )
 
   var
     symbolMap = newMap[cstring, VscodeDocumentSymbol]()
-    res = if items.toJs().to(bool): items else: @[]
+    res =
+      if items.toJs().to(bool):
+        items
+      else:
+        @[]
   try:
     for item in res:
       if not symbolMap.has(item.fullName):
@@ -129,7 +125,7 @@ proc getDocumentSymbols*(
           cstring(""),
           vscodeKindFromNimSym(item.suggest),
           item.`range`, # we don't have the comment and other useful bits
-          item.`range`
+          item.`range`,
         )
   except:
     var e = getCurrentException()
@@ -159,8 +155,9 @@ proc indexFile(file: cstring) {.async.} =
     timestamp = Math.max(fsStat.mtimeMs, fsStat.ctimeMs)
     # doc query has a minor race condition for sub-second changes, but it's all
     #   transient data anyways
-    doc = dbFiles.queryOne(equal("file", file) and 
-                           higherEqual("timestamp", timestamp)).to(FileData)
+    doc = dbFiles
+      .queryOne(equal("file", file) and higherEqual("timestamp", timestamp))
+      .to(FileData)
     docNotFound = doc.isNil()
 
   if docNotFound:
@@ -176,22 +173,23 @@ proc indexFile(file: cstring) {.async.} =
       if not folder.isNil():
         dbFiles.insert(FileData{file: file, timestamp: timestamp})
     except:
-      console.error("indexFile - dbFiles", getCurrentExceptionMsg().cstring,
-          getCurrentException())
+      console.error(
+        "indexFile - dbFiles", getCurrentExceptionMsg().cstring, getCurrentException()
+      )
 
     try:
       discard await dbTypes.delete equal("file", file)
-      
+
       if folder != nil:
         let moduleSymbol = SymbolData{
-            ws: folder.uri.fsPath,
-            file: vscode.uriFile(file).fsPath,
-            range_start: vscode.newPosition(0, 0),
-            range_end: vscode.newPosition(0, 0),
-            `type`: path.basename(file, ".nim"),
-            container: "",
-            kind: VscodeSymbolKind.module
-          }
+          ws: folder.uri.fsPath,
+          file: vscode.uriFile(file).fsPath,
+          range_start: vscode.newPosition(0, 0),
+          range_end: vscode.newPosition(0, 0),
+          `type`: path.basename(file, ".nim"),
+          container: "",
+          kind: VscodeSymbolKind.module,
+        }
 
         console.log("indexFile - insertedModule", moduleSymbol)
 
@@ -201,29 +199,36 @@ proc indexFile(file: cstring) {.async.} =
       for i in infos:
         var folder = vscode.workspace.getWorkspaceFolder(i.location.uri)
         if folder.isNil():
-          console.log("indexFile - dbTypes - not in workspace",
-              i.location.uri.fsPath)
+          console.log("indexFile - dbTypes - not in workspace", i.location.uri.fsPath)
           continue
 
-        dbTypes.insert(SymbolData{
-          ws: folder.uri.fsPath,
-          file: i.location.uri.fsPath,
-          range_start: i.location.`range`.start,
-          range_end: i.location.`range`.`end`,
-          `type`: i.name,
-          container: i.containerName,
-          kind: i.kind
-        })
+        dbTypes.insert(
+          SymbolData{
+            ws: folder.uri.fsPath,
+            file: i.location.uri.fsPath,
+            range_start: i.location.`range`.start,
+            range_end: i.location.`range`.`end`,
+            `type`: i.name,
+            container: i.containerName,
+            kind: i.kind,
+          }
+        )
     except:
-      console.error("indexFile - dbTypes", getCurrentExceptionMsg().cstring,
-          getCurrentException())
+      console.error(
+        "indexFile - dbTypes", getCurrentExceptionMsg().cstring, getCurrentException()
+      )
 
 proc removeFromIndex(file: cstring): void =
   dbFiles.delete equal("file", file)
 
-proc addWorkspaceFile*(file: cstring): void = discard indexFile(file)
-proc removeWorkspaceFile*(file: cstring): void = removeFromIndex(file)
-proc changeWorkspaceFile*(file: cstring): void = discard indexFile(file)
+proc addWorkspaceFile*(file: cstring): void =
+  discard indexFile(file)
+
+proc removeWorkspaceFile*(file: cstring): void =
+  removeFromIndex(file)
+
+proc changeWorkspaceFile*(file: cstring): void =
+  discard indexFile(file)
 
 proc getDbName(name: cstring, version: cint): cstring =
   return name & "_" & cstring($version) & ".db"
@@ -233,7 +238,7 @@ proc cleanOldDb(basePath: cstring, name: cstring): void =
   if fs.existsSync(dbPath):
     fs.unlinkSync(dbPath)
 
-  for i in 0..<dbVersion:
+  for i in 0 ..< dbVersion:
     var dbPath = path.join(basepath, getDbName(name, cint(i)))
     if fs.existsSync(dbPath):
       fs.unlinkSync(dbPath)
@@ -244,17 +249,18 @@ proc indexWorkspaceFiles(filters: IndexExcludeGlobs) {.async.} =
   let
     nimSuggestPath = nimSuggestExec.getNimSuggestPath()
     invalidNimSuggestPath = nimSuggestPath.isNil or nimSuggestPath == ""
-    excludeGlob = cstring("{") &
-      toSeq(filters.pairs).filterIt(it[1]).mapIt(it[0]).join(cstring(",")) &
-      cstring("}")
+    excludeGlob =
+      cstring("{") & toSeq(filters.pairs).filterIt(it[1]).mapIt(it[0]).join(
+        cstring(",")
+      ) & cstring("}")
     hasExcludes = excludeGlob != "{}"
     urls =
       if invalidNimSuggestPath:
         await promiseResolve(newArray[VscodeUri]())
       elif hasExcludes:
-        await vscode.workspace.findFiles(cstring("**"/"*.nim"), excludeGlob)
+        await vscode.workspace.findFiles(cstring("**" / "*.nim"), excludeGlob)
       else:
-        await vscode.workspace.findFiles(cstring("**"/"*.nim"))
+        await vscode.workspace.findFiles(cstring("**" / "*.nim"))
 
   console.log("exclude globs: ", excludeGlob)
 
@@ -285,7 +291,7 @@ proc initWorkspace*(extPath: cstring, filters: IndexExcludeGlobs) {.async.} =
   discard dbTypes.processCommands()
 
 proc findWorkspaceSymbols*(
-  query: cstring
+    query: cstring
 ): Future[seq[VscodeSymbolInformation]] {.async.} =
   var
     symbols: seq[VscodeSymbolInformation] = @[]
@@ -302,19 +308,20 @@ proc findWorkspaceSymbols*(
       folderPaths.add(f.uri.fsPath)
 
     var docs = await dbTypes.query(
-        qs().lim(100),
-        oneOf("ws", folderPaths) and matches("type", reg)
-      )
+      qs().lim(100), oneOf("ws", folderPaths) and matches("type", reg)
+    )
 
     for d in docs:
       var doc = d.to(SymbolData)
-      symbols.add(vscode.newSymbolInformation(
-        doc.`type`,
-        doc.kind,
-        doc.container,
-        vscode.newLocation(
-          vscode.uriFile(doc.file),
-          vscode.newPosition(doc.range_start.line, doc.range_start.character))
+      symbols.add(
+        vscode.newSymbolInformation(
+          doc.`type`,
+          doc.kind,
+          doc.container,
+          vscode.newLocation(
+            vscode.uriFile(doc.file),
+            vscode.newPosition(doc.range_start.line, doc.range_start.character),
+          ),
         )
       )
   except:
@@ -325,13 +332,11 @@ proc findWorkspaceSymbols*(
 
 proc clearCaches*(filters: IndexExcludeGlobs) {.async.} =
   ## clear file and type caches, and reindex while excluding `filter`ed files
-  if dbTypes != nil: await dbTypes.drop()
-  if dbFiles != nil: await dbFiles.drop()
+  if dbTypes != nil:
+    await dbTypes.drop()
+  if dbFiles != nil:
+    await dbFiles.drop()
   await indexWorkspaceFiles(filters)
 
 proc onClose*() {.async.} =
-  allSettled(@[
-    dbFiles.processCommands(),
-    dbTypes.processCommands()
-  ])
-  
+  allSettled(@[dbFiles.processCommands(), dbTypes.processCommands()])

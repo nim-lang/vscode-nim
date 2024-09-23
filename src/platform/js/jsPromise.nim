@@ -8,18 +8,30 @@ type
   ## temporary bridge until fully migrated to asyncjs
 
 # Statics
-proc newPromise*[T, R](handler: proc(resolve: proc(val: T), reject: proc(
-    reason: R))): Future[T] {.importcpp: "new Promise(@)".}
+proc newPromise*[T, R](
+  handler: proc(resolve: proc(val: T), reject: proc(reason: R))
+): Future[T] {.importcpp: "new Promise(@)".}
+
 proc newEmptyPromise*(): Future[void] {.importcpp: "(Promise.resolve())".}
-proc race*[T](iterable: openArray[T]): Future[T] {.importcpp: "Promise.race(#)", discardable.}
+proc race*[T](
+  iterable: openArray[T]
+): Future[T] {.importcpp: "Promise.race(#)", discardable.}
+
 proc all*[T](
   iterable: openArray[Future[T]]
 ): Future[seq[T]] {.importcpp: "Promise.all(@)", discardable.}
+
 proc allSettled*[T](
   iterable: openArray[Future[T]]
 ): Future[void] {.importcpp: "Promise.allSettled(@)", discardable.}
-proc promiseReject*[T](reason: T): Future[T] {.importcpp: "Promise.reject(#)", discardable.}
-proc promiseResolve*[T](val: T): Future[T] {.importcpp: "Promise.resolve(#)", discardable.}
+
+proc promiseReject*[T](
+  reason: T
+): Future[T] {.importcpp: "Promise.reject(#)", discardable.}
+
+proc promiseResolve*[T](
+  val: T
+): Future[T] {.importcpp: "Promise.resolve(#)", discardable.}
 
 {.push importcpp, discardable.}
 proc then*[T](p: Future[T], onFulfilled: proc()): Future[T]
@@ -27,14 +39,17 @@ proc then*[T, R](p: Future[T], onFulfilled: proc(): Future[R]): Future[R]
 proc then*[T](p: Future[T], onFulfilled: proc(val: T)): Future[T]
 proc then*[T, R](p: Future[T], onFulfilled: proc(val: T): Future[R]): Future[R]
 proc then*[T, R](p: Future[T], onFulfilled: proc(val: T): R): Future[R]
-proc then*[T](p: Future[T], onFulfilled: proc(val: T), onRejected: proc(
-    reason: auto)): Future[T]
-proc then*[T, R](p: Future[T], onFulfilled: proc(val: T): R, onRejected: proc(
-    reason: auto)): Future[R]
+proc then*[T](
+  p: Future[T], onFulfilled: proc(val: T), onRejected: proc(reason: auto)
+): Future[T]
+
+proc then*[T, R](
+  p: Future[T], onFulfilled: proc(val: T): R, onRejected: proc(reason: auto)
+): Future[R]
+
 proc catch*[T](p: Future[T], onRejected: proc(reason: auto)): Future[T]
 proc catch*[T, R](p: Future[T], onRejected: proc(reason: auto): R): Future[R]
-proc catch*[T, R](p: Future[T], onRejected: proc(reason: auto): Future[
-    R]): Future[R]
+proc catch*[T, R](p: Future[T], onRejected: proc(reason: auto): Future[R]): Future[R]
 {.pop.}
 
 #[]

@@ -1,107 +1,119 @@
-import std/[jsconsole, strutils, jsfetch, asyncjs, sugar, sequtils, options, strformat, times, sets]
+import
+  std/[
+    jsconsole, strutils, jsfetch, asyncjs, sugar, sequtils, options, strformat, times,
+    sets,
+  ]
 import platform/[vscodeApi, languageClientApi]
 
-import platform/js/[jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs, jsNodeNet, jsPromise]
+import
+  platform/js/
+    [jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs, jsNodeNet, jsPromise]
 import nimutils
 from tools/nimBinTools import getNimbleExecPath, getBinPath
 import spec
 
-type 
-  LSPInstallPathKind = enum
-    lspPathInvalid, #Invalid path
-    lspPathLocal, #Default local nimble install
-    lspPathGlobal, #Global nimble install
-    lspPathSetting #User defined path
+type LSPInstallPathKind = enum
+  lspPathInvalid #Invalid path
+  lspPathLocal #Default local nimble install
+  lspPathGlobal #Global nimble install
+  lspPathSetting #User defined path
 
 const MinimalLSPVersion = (1, 0, 0)
 const MinimalCapabilitiesLSPVersion = (1, 5, 2)
 
-proc `$` (v: LSPVersion):string = &"v{v.major}.{v.minor}.{v.patch}"
+proc `$`(v: LSPVersion): string =
+  &"v{v.major}.{v.minor}.{v.patch}"
 
 proc `>`(v1, v2: LSPVersion): bool =
-  if v1.major != v2.major: v1.major > v2.major
-  elif v1.minor != v2.minor:  v1.minor > v2.minor
-  else: v1.patch > v2.patch
+  if v1.major != v2.major:
+    v1.major > v2.major
+  elif v1.minor != v2.minor:
+    v1.minor > v2.minor
+  else:
+    v1.patch > v2.patch
 
-proc `==`(v1, v2: LSPVersion): bool = 
-  v1.major == v2.major and v1.minor == v2.minor and 
-  v1.patch == v2.patch
+proc `==`(v1, v2: LSPVersion): bool =
+  v1.major == v2.major and v1.minor == v2.minor and v1.patch == v2.patch
 
-proc parseVersion(version: string): Option[LSPVersion] = 
+proc parseVersion(version: string): Option[LSPVersion] =
   #expected version = vMajor.Minor.Patch
   var ver = version.split(".")
-  if ver.len != 3: return none(LSPVersion)
+  if ver.len != 3:
+    return none(LSPVersion)
   ver[0] = ver[0].replace("v", "")
   var versions = newSeq[int]()
   for v in ver:
     try:
       versions.add(parseInt(v.strip()))
-    except CatchableError: 
+    except CatchableError:
       console.error("Error parsing version", v.cstring)
       console.error(getCurrentExceptionMsg().cstring)
       return none(LSPVersion)
   some (versions[0], versions[1], versions[2])
 
-proc getLatestVersion(versions: seq[LSPVersion]): LSPVersion = 
-  if versions.len == 0: 
+proc getLatestVersion(versions: seq[LSPVersion]): LSPVersion =
+  if versions.len == 0:
     console.warn("No versions found")
     return MinimalLSPVersion
   result = versions[0]
   for v in versions:
-    if v > result: result = v
+    if v > result:
+      result = v
 
-
-proc isSomeSafe(self: Option[LSPVersion]): bool {.inline.} =  
+proc isSomeSafe(self: Option[LSPVersion]): bool {.inline.} =
   #hack to fix https://github.com/nim-lang/vscode-nim/issues/47
   var wrap {.exportc.} = self
   var test {.importcpp: ("('has' in wrap)").}: bool
-  if test: self.isSome()
-  else: false
+  if test:
+    self.isSome()
+  else:
+    false
 
-proc getLatestReleasedLspVersion(default: LSPVersion): Future[LSPVersion] {.async.} = 
-  type 
-    Tag = object of JsObject
-      name: cstring
+proc getLatestReleasedLspVersion(default: LSPVersion): Future[LSPVersion] {.async.} =
+  type Tag = object of JsObject
+    name: cstring
+
   proc toTags(obj: JsObject): seq[Tag] {.importjs: ("#").}
   let url = " https://api.github.com/repos/nim-lang/langserver/tags".cstring
   var failed = false
   let res = await fetch(url)
-    .then(proc(res: Response): auto = 
-        failed = res.status != 200
-        if failed: #It may fail due to the rate limit
-          console.error("Nimlangserver request to GitHub failed", res.statusText)
-        res.json())
-    .then((json: JsObject) => json)
-    .catch(proc(err: Error): JsObject = 
+  .then(
+    proc(res: Response): auto =
+      failed = res.status != 200
+      if failed: #It may fail due to the rate limit
+        console.error("Nimlangserver request to GitHub failed", res.statusText)
+      res.json()
+  )
+  .then((json: JsObject) => json)
+  .catch(
+    proc(err: Error): JsObject =
       console.error("Nimlangserver request to GitHub failed", err)
       failed = true
-    )
-  if failed: 
+  )
+  if failed:
     return default
-  else: 
-    return res
-    .toTags
-    .mapIt(parseVersion($it.name))
-    .filterIt(it.isSomeSafe)
-    .mapIt(it.get())
-    .getLatestVersion()
+  else:
+    return res.toTags
+      .mapIt(parseVersion($it.name))
+      .filterIt(it.isSomeSafe)
+      .mapIt(it.get())
+      .getLatestVersion()
 
-
-proc isValidLspPath(lspPath: cstring): bool = 
-  result = not lspPath.isNil and lspPath != "" and fs.existsSync(path.resolve(lspPath))  
-  if lspPath.isNil: 
+proc isValidLspPath(lspPath: cstring): bool =
+  result = not lspPath.isNil and lspPath != "" and fs.existsSync(path.resolve(lspPath))
+  if lspPath.isNil:
     console.log("lspPath is nil")
   else:
     console.log(fmt"isValidLspPath({lspPath}) = {result}".cstring)
 
-proc getLocalLspDir(): cstring = 
+proc getLocalLspDir(): cstring =
   #The lsp is installed inside the user directory because the user 
   #storage of the extension seems to be too long and the installation fails
   result = path.join(nodeOs.homedir, ".vscode-nim")
   if not fs.existsSync(result):
     fs.mkdirSync(result)
 
-proc getLspPath(state: ExtensionState): (cstring, LSPInstallPathKind) = 
+proc getLspPath(state: ExtensionState): (cstring, LSPInstallPathKind) =
   #[
     We first try to use the path from the nim.lsp.path setting.
     If path is not set, we try to use the local nimlangserver binary.
@@ -120,61 +132,70 @@ proc getLspPath(state: ExtensionState): (cstring, LSPInstallPathKind) =
   if isValidLspPath(lspPath):
     return (lspPath, lspPathGlobal)
   return ("", lspPathInvalid)
-   
+
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.}
 
-proc installNimLangServer(state: ExtensionState, version: Option[LSPVersion]) = 
+proc installNimLangServer(state: ExtensionState, version: Option[LSPVersion]) =
   var installCmd = "install nimlangserver"
   if version.isSome:
     let v = version.get
     installCmd.add("@" & &"{v.major}.{v.minor}.{v.patch}")
   let args: seq[cstring] = @[installCmd.cstring, "--accept", "-l"]
   var process = cp.spawn(
-      getNimbleExecPath(), args, 
-      SpawnOptions(shell: true, cwd: getLocalLspDir()))
-  process.stdout.onData(proc(data: Buffer) =
-    outputLine(data.toString())
+    getNimbleExecPath(), args, SpawnOptions(shell: true, cwd: getLocalLspDir())
   )
-  process.stderr.onData(proc(data: Buffer) =
-    let msg =  $data.toString()
-    if msg.contains("Warning: "):
-      outputLine(("[Warning]" & msg).cstring)
-    else:
-      outputLine(("[Error]" & msg).cstring)
+  process.stdout.onData(
+    proc(data: Buffer) =
+      outputLine(data.toString())
   )
-  process.onClose(proc(code: cint, signal: cstring): void =
-    if code == 0:
-      outputLine("Nimble install successfully")
-      discard startLanguageServer(false, state)
-      console.log("Nimble install finished, validating by checking if nimlangserver is present.")
-    else:
-      outputLine("Nimble install failed.")
+  process.stderr.onData(
+    proc(data: Buffer) =
+      let msg = $data.toString()
+      if msg.contains("Warning: "):
+        outputLine(("[Warning]" & msg).cstring)
+      else:
+        outputLine(("[Error]" & msg).cstring)
+  )
+  process.onClose(
+    proc(code: cint, signal: cstring): void =
+      if code == 0:
+        outputLine("Nimble install successfully")
+        discard startLanguageServer(false, state)
+        console.log(
+          "Nimble install finished, validating by checking if nimlangserver is present."
+        )
+      else:
+        outputLine("Nimble install failed.")
   )
 
-proc notifyOrUpdateOnTheLSPVersion(current, latest: LSPVersion, state: ExtensionState) = 
+proc notifyOrUpdateOnTheLSPVersion(current, latest: LSPVersion, state: ExtensionState) =
   if latest > current:
     let (_, lspKind) = getLspPath(state)
     if lspKind == lspPathLocal:
       installNimLangServer(state, some(latest))
-      let msg = &"""
+      let msg =
+        &"""
   There is a new Nim langserver version available ({latest}). 
   Proceding to update the local installation of the langserver."""
       vscode.window.showInformationMessage(msg.cstring)
     else:
-      var msg = &"""
+      var msg =
+        &"""
   There is a new Nim langserver version available ({latest}). 
   You can install it by running: nimble install nimlangserver"""
       vscode.window.showInformationMessage(msg.cstring)
   else:
     outputLine("Your lsp version is updated")
 
-proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: ExtensionState) =
+proc handleLspVersion(
+    nimlangserver: cstring, latestVersion: LSPVersion, state: ExtensionState
+) =
   var isDone = false
   var gotError: ExecError
   var gotStdout: cstring
   var gotStderr: cstring
 
-  proc onExec(error: ExecError, stdout: cstring, stderr: cstring) = 
+  proc onExec(error: ExecError, stdout: cstring, stderr: cstring) =
     # showing VS code user dialog messages does not appear to work from within this callback function,
     # so we save what we've got here and show all messages in onLspTimeout()
     isDone = true
@@ -183,7 +204,7 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: 
     gotStderr = stderr
 
   var process: ChildProcess
-  proc onLspTimeout() = 
+  proc onLspTimeout() =
     if isDone:
       let ver = parseVersion($gotStdout)
       if ver.isNone():
@@ -197,61 +218,76 @@ proc handleLspVersion(nimlangserver: cstring, latestVersion: LSPVersion, state: 
       notifyOrUpdateOnTheLSPVersion(MinimalLSPVersion, latestVersion, state)
 
   global.setTimeout(onLspTimeout, 1000)
-  process = cp.exec((nimlangserver & " --version"), ExecOptions(), onExec)    
+  process = cp.exec((nimlangserver & " --version"), ExecOptions(), onExec)
 
+proc refreshLspStatus*(
+  self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus
+)
 
-proc refreshLspStatus*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) 
-proc refreshNotifications*(self: NimLangServerStatusProvider, notifications: seq[Notification])
+proc refreshNotifications*(
+  self: NimLangServerStatusProvider, notifications: seq[Notification]
+)
 
-
-proc startClientSocket(portFut: Future[int]): proc (): Future[ServerOptions] {.async.} = 
-  return proc(): auto {.async.} = 
+proc startClientSocket(portFut: Future[int]): proc(): Future[ServerOptions] {.async.} =
+  return proc(): auto {.async.} =
     let port = await portFut
-    let socket = net.createConnection(port.cint, "localhost", proc(): void = discard)
+    let socket = net.createConnection(
+      port.cint,
+      "localhost",
+      proc(): void =
+        discard,
+    )
     var streamInfo = newJsObject()
     streamInfo.reader = socket
     streamInfo.writer = socket
-    let serverOptions = cast[ServerOptions](streamInfo)    
+    let serverOptions = cast[ServerOptions](streamInfo)
     return promiseResolve(serverOptions)
 
-proc startSocket(nimlangserver: cstring, state: ExtensionState): proc (): Future[ServerOptions] =
+proc startSocket(
+    nimlangserver: cstring, state: ExtensionState
+): proc(): Future[ServerOptions] =
   let config = vscode.workspace.getConfiguration("nim")
   let port = config.getInt("lspPort").int
-  if port != 0: #the user specified a port so we dont need to start the server process. It's assumed is already running
+  if port != 0:
+    #the user specified a port so we dont need to start the server process. It's assumed is already running
     return startClientSocket(promiseResolve(port))
-  let process = cp.exec((nimlangserver & " --socket"), ExecOptions(), nil)    
-  let portPromise = newPromise(proc(
-        resolve: proc(port: int), reject: proc(reasons: JsObject)
-    ) =
+  let process = cp.exec((nimlangserver & " --socket"), ExecOptions(), nil)
+  let portPromise = newPromise(
+    proc(resolve: proc(port: int), reject: proc(reasons: JsObject)) =
       process.stdout.onData(
         proc(data: Buffer) =
           let msg = $data.toString()
           if msg.startsWith("port="):
             try:
-              let port = parseInt(msg.subStr(5).strip)            
+              let port = parseInt(msg.subStr(5).strip)
               console.log ("nimlangserver socket listening at " & $port).cstring
               resolve(port)
             except ValueError as ex:
-              console.error ("An error ocurred trying to parse the port " & msg.substr(5) & ex.msg).cstring
+              console.error (
+                "An error ocurred trying to parse the port " & msg.substr(5) & ex.msg
+              ).cstring
           state.lspChannel.appendLine msg.cstring
-        )
+      )
       #StdError is directed to the output of the lsp which is the same as the stdio version does
-      process.stderr.onData((data: Buffer) => state.lspChannel.appendLine(data.toString()))
+      process.stderr.onData(
+        (data: Buffer) => state.lspChannel.appendLine(data.toString())
+      )
   )
   startClientSocket(portPromise)
 
-proc fetchLsp*[T, U](state: ExtensionState, name: string, params: U): Future[T] {.async.} = 
+proc fetchLsp*[T, U](
+    state: ExtensionState, name: string, params: U
+): Future[T] {.async.} =
   console.log("[FetchLsp] ", name, params.toJs())
   let response = await state.client.sendRequest(name, params)
   let res = jsonStringify(response).jsonParse(T)
   console.log(res)
   return res
 
-proc fetchLsp*[T](state: ExtensionState, name: string): Future[T] = 
+proc fetchLsp*[T](state: ExtensionState, name: string): Future[T] =
   return fetchLsp[T, JsObject](state, name, ().toJs())
 
-
-proc addExtensionCapabilities(state: ExtensionState, caps: seq[cstring]) = 
+proc addExtensionCapabilities(state: ExtensionState, caps: seq[cstring]) =
   for cap in caps:
     try:
       let extCap = parseEnum[LspExtensionCapability]($cap)
@@ -266,32 +302,35 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
     console.log("nimlangserver not found on path")
     if tryInstall and not state.installPerformed:
       let command = getNimbleExecPath() & " install nimlangserver --accept -l"
-      vscode.window.showInformationMessage(
-        cstring(fmt "Unable to find nimlangserver. Do you want me to attempt to install it via '{command}'?"),
-        VscodeMessageOptions(
-          detail: cstring(""),
-          modal: false
+
+      vscode.window
+      .showInformationMessage(
+        cstring(
+          fmt "Unable to find nimlangserver. Do you want me to attempt to install it via '{command}'?"
         ),
+        VscodeMessageOptions(detail: cstring(""), modal: false),
         VscodeMessageItem(title: cstring("Yes"), isCloseAffordance: false),
-        VscodeMessageItem(title: cstring("No"), isCloseAffordance: true))
+        VscodeMessageItem(title: cstring("No"), isCloseAffordance: true),
+      )
       .then(
         onfulfilled = proc(value: JsRoot): JsRoot =
           if value.JsObject.to(VscodeMessageItem).title == "Yes":
             if not state.installPerformed:
               state.installPerformed = true
               vscode.window.showInformationMessage(
-                cstring(fmt "Trying to install nimlangserver via '{command}'"))
+                cstring(fmt "Trying to install nimlangserver via '{command}'")
+              )
               installNimLangServer(state, none(LSPVersion))
-          value
-        ,
+          value,
         onrejected = proc(reason: JsRoot): JsRoot =
-          reason
+          reason,
       )
     else:
-      let cantInstallInfoMesssage: cstring = "Unable to find/install `nimlangserver`. You can attempt to install it by running `nimble install nimlangserver` or downloading the binaries from https://github.com/nim-lang/langserver/releases."
+      let cantInstallInfoMesssage: cstring =
+        "Unable to find/install `nimlangserver`. You can attempt to install it by running `nimble install nimlangserver` or downloading the binaries from https://github.com/nim-lang/langserver/releases."
       vscode.window.showInformationMessage(cantInstallInfoMesssage)
   else:
-    let nimlangserver = path.resolve(rawPath);
+    let nimlangserver = path.resolve(rawPath)
     outputLine(fmt"nimlangserver found: {nimlangserver}".cstring)
     outputLine("Starting nimlangserver.")
     let latestVersion = await getLatestReleasedLspVersion(MinimalLSPVersion)
@@ -299,80 +338,95 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
 
     let
       serverOptions = ServerOptions{
-        run: Executable{command: nimlangserver, transport: TransportKind.stdio, options: ExecutableOptions(shell: true)},
-        debug: Executable{command: nimlangserver, transport: TransportKind.stdio, options: ExecutableOptions(shell: true)}
+        run: Executable{
+          command: nimlangserver,
+          transport: TransportKind.stdio,
+          options: ExecutableOptions(shell: true),
+        },
+        debug: Executable{
+          command: nimlangserver,
+          transport: TransportKind.stdio,
+          options: ExecutableOptions(shell: true),
+        },
       }
       clientOptions = LanguageClientOptions{
-        documentSelector: @[DocumentFilter(scheme: cstring("file"),
-                                           language: cstring("nim"))],
-        outputChannel: state.lspChannel
+        documentSelector:
+          @[DocumentFilter(scheme: cstring("file"), language: cstring("nim"))],
+        outputChannel: state.lspChannel,
       }
     let config = vscode.workspace.getConfiguration("nim")
     let transportMode = config.getStr("transportMode")
-    case transportMode:
+    case transportMode
     of "socket":
       state.client = vscodeLanguageClient.newLanguageClient(
         cstring("nimlangserver"),
         cstring("Nim Language Server"),
-        startSocket(nimlangserver, state),        
-        clientOptions)
+        startSocket(nimlangserver, state),
+        clientOptions,
+      )
     else:
       state.client = vscodeLanguageClient.newLanguageClient(
         cstring("nimlangserver"),
-        cstring("Nim Language Server"),        
+        cstring("Nim Language Server"),
         serverOptions,
-        clientOptions)  
+        clientOptions,
+      )
 
     await state.client.start()
-    
-    state.client.onNotification("extension/statusUpdate", proc (params: JsObject) =
-      let lspStatus = jsonStringify(params).jsonParse(NimLangServerStatus)
-      # outputLine("Received status update " & jsonStringify(params))
-      refreshLspStatus(state.statusProvider, lspStatus)
+
+    state.client.onNotification(
+      "extension/statusUpdate",
+      proc(params: JsObject) =
+        let lspStatus = jsonStringify(params).jsonParse(NimLangServerStatus)
+        # outputLine("Received status update " & jsonStringify(params))
+        refreshLspStatus(state.statusProvider, lspStatus),
     )
 
-    type 
+    type
       Message = object of JsObject
         message: cstring
         `type`: MessageType
-      
+
       MessageType {.pure.} = enum
-        Error = 1,
-        Warning = 2,
-        Info = 3,
-        Log = 4,
+        Error = 1
+        Warning = 2
+        Info = 3
+        Log = 4
         Debug = 5
 
-    func messageTypToStr(typ: MessageType): cstring  = 
-      case typ:
+    func messageTypToStr(typ: MessageType): cstring =
+      case typ
       of MessageType.Error: "error"
       of Warning: "warning"
       else: "info"
 
-    state.client.onNotification("window/showMessage", proc (params: JsObject) =
-      let message = jsonStringify(params).jsonParse(Message)
-      inc state.statusProvider.lastId
-      let id = $state.statusProvider.lastId
-      let notification = Notification(
-        message: message.message, 
-        kind: messageTypToStr(message.`type`), 
-        id: id.cstring,
-        date: now()
-      )
-      let nots = state.statusProvider.notifications & @[notification]
-      refreshNotifications(state.statusProvider, nots)
+    state.client.onNotification(
+      "window/showMessage",
+      proc(params: JsObject) =
+        let message = jsonStringify(params).jsonParse(Message)
+        inc state.statusProvider.lastId
+        let id = $state.statusProvider.lastId
+        let notification = Notification(
+          message: message.message,
+          kind: messageTypToStr(message.`type`),
+          id: id.cstring,
+          date: now(),
+        )
+        let nots = state.statusProvider.notifications & @[notification]
+        refreshNotifications(state.statusProvider, nots),
     )
     let expiredTime = state.config.getInt("notificationTimeout")
     if expiredTime > 0:
       global.setInterval(
-        proc() = 
-          let notifications = state.statusProvider.notifications.filterIt(it.date > now() - expiredTime.seconds)
+        proc() =
+          let notifications = state.statusProvider.notifications.filterIt(
+            it.date > now() - expiredTime.seconds
+          )
           refreshNotifications(state.statusProvider, notifications),
-        1000 #refresh time
+        1000, #refresh time
       )
 
     outputLine("Nim Language Server started")
-
 
 export startLanguageServer
 
@@ -380,7 +434,8 @@ proc stopLanguageServer(state: ExtensionState) {.async.} =
   await state.client.stop()
 
 proc getWebviewContent(status: NimLangServerStatus): cstring =
-  result = cstring(&"""
+  result = cstring(
+    &"""
   <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -415,12 +470,15 @@ proc getWebviewContent(status: NimLangServerStatus): cstring =
     </div>
   </body>
   </html>
-  """)
+  """
+  )
 
-proc displayStatusInWebview(status: NimLangServerStatus)  =
-  let panel = vscode.window.createWebviewPanel("nim", "Nim", ViewColumn.one, WebviewPanelOptions())
+proc displayStatusInWebview(status: NimLangServerStatus) =
+  let panel = vscode.window.createWebviewPanel(
+    "nim", "Nim", ViewColumn.one, WebviewPanelOptions()
+  )
   panel.webview.html = getWebviewContent(status)
- 
+
 proc fetchLspStatus*(state: ExtensionState): Future[NimLangServerStatus] {.async.} =
   let client = state.client
   let response = await client.sendRequest("extension/status", ().toJs())
@@ -428,14 +486,17 @@ proc fetchLspStatus*(state: ExtensionState): Future[NimLangServerStatus] {.async
   state.channel.appendLine(($lspStatus).cstring)
   return lspStatus
 
-proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "", 
-    collapsibleState: int = 0, 
-    instance: Option[NimSuggestStatus] = none(NimSuggestStatus), 
+proc newLspItem*(
+    label: cstring,
+    description: cstring = "",
+    tooltip: cstring = "",
+    collapsibleState: int = 0,
+    instance: Option[NimSuggestStatus] = none(NimSuggestStatus),
     iconPath: Option[JsObject] = none(JsObject),
     pendingRequest: Option[PendingRequestStatus] = none(PendingRequestStatus),
     projectError: Option[ProjectError] = none(ProjectError),
-    notification: Option[Notification] = none(Notification)
-  ): LspItem =
+    notification: Option[Notification] = none(Notification),
+): LspItem =
   let statusItem = vscode.newTreeItem(label, collapsibleState)
   statusItem.description = description
   statusItem.tooltip = tooltip
@@ -447,35 +508,39 @@ proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "
     statusItem.iconPath = iconPath.get
   cast[LspItem](statusItem)
 
-proc onLspSuggest*(action, projectFile: cstring) {.async.} = 
+proc onLspSuggest*(action, projectFile: cstring) {.async.} =
   #Handles extension/suggest calls 
   #(right now only from the restart button in the suggest instance from the nim panel)
   var projectFile = projectFile
   if projectFile == "current":
     var activeEditor: VscodeTextEditor = vscode.window.activeTextEditor
     console.log("llega")
-    if activeEditor.isNil(): return
+    if activeEditor.isNil():
+      return
     projectFile = activeEditor.document.fileName
     console.log(projectFile)
 
-  case action:
-  of "restart", "restartAll":      
+  case action
+  of "restart", "restartAll":
     outputLine((&"Path to file {projectFile}").cstring)
     let suggestParams = JsObject()
     suggestParams.action = action
     suggestParams.projectFile = projectFile
-    let response = await fetchLsp[JsObject, JsObject](ext, "extension/suggest", suggestParams)
+    let response =
+      await fetchLsp[JsObject, JsObject](ext, "extension/suggest", suggestParams)
     console.log(response)
-  else: 
+  else:
     console.error("Action not supported")
 
 proc onShowNotification*(args: JsObject) =
   let message = args.to(cstring)
-  vscode.window.showInformationMessage("Details", VscodeMessageOptions(detail: message, modal: true))
+  vscode.window.showInformationMessage(
+    "Details", VscodeMessageOptions(detail: message, modal: true)
+  )
 
 proc onDeleteNotification*(args: JsObject) =
   let id = args.to(cstring)
-  let state = nimUtils.ext 
+  let state = nimUtils.ext
   let notifications = state.statusProvider.notifications.filterIt(it.id != id)
   refreshNotifications(state.statusProvider, notifications)
 
@@ -492,11 +557,12 @@ proc newNotificationItem*(notification: Notification): LspItem =
   item.command.title = "Show Notification".cstring
   item.command.arguments = @[notification.message.toJs()]
   item.tooltip = notification.message
-  let color = fmt"notifications{capitalizeAscii($notification.kind)}Icon.foreground".cstring
+  let color =
+    fmt"notifications{capitalizeAscii($notification.kind)}Icon.foreground".cstring
   item.iconPath = vscode.themeIcon(notification.kind, vscode.themeColor(color))
   cast[LspItem](item)
 
-proc isNotificationItem(item: LspItem): bool = 
+proc isNotificationItem(item: LspItem): bool =
   not item.notification.isUndefined and item.notification.isSome
 
 proc notificationActionItems(lspItem: LspItem): seq[LspItem] =
@@ -508,7 +574,8 @@ proc notificationActionItems(lspItem: LspItem): seq[LspItem] =
   item.command.command = "nim.showNotification".cstring
   item.command.title = "Show Notification".cstring
   item.command.arguments = @[notification.message.toJs()]
-  item.iconPath = vscode.themeIcon("selection", vscode.themeColor("notificationsInfoIcon.foreground"))
+  item.iconPath =
+    vscode.themeIcon("selection", vscode.themeColor("notificationsInfoIcon.foreground"))
   result.add cast[LspItem](item)
 
   let item2 = vscode.newTreeItem("Delete", TreeItemCollapsibleState_None)
@@ -516,19 +583,20 @@ proc notificationActionItems(lspItem: LspItem): seq[LspItem] =
   item2.command = newJsObject()
   item2.command.command = "nim.onDeleteNotification".cstring
   item2.command.title = "Delete Notification".cstring
-  item2.iconPath = vscode.themeIcon("trash", vscode.themeColor("notificationsErrorIcon.foreground"))
+  item2.iconPath =
+    vscode.themeIcon("trash", vscode.themeColor("notificationsErrorIcon.foreground"))
   item2.command.arguments = @[notification.id.toJs()]
   result.add cast[LspItem](item2)
 
-
-proc globalNotificationActionItems(): seq[LspItem] = 
+proc globalNotificationActionItems(): seq[LspItem] =
   if nimUtils.ext.statusProvider.notifications.len == 0:
     return @[]
   let item = vscode.newTreeItem("Clear All", TreeItemCollapsibleState_None)
   item.command = newJsObject()
   item.command.command = "nim.onClearAllNotifications".cstring
   item.command.title = "Clear All Notifications".cstring
-  item.iconPath = vscode.themeIcon("trash", vscode.themeColor("notificationsErrorIcon.foreground"))
+  item.iconPath =
+    vscode.themeIcon("trash", vscode.themeColor("notificationsErrorIcon.foreground"))
   @[cast[LspItem](item)]
 
 #[
@@ -537,94 +605,164 @@ proc globalNotificationActionItems(): seq[LspItem] =
     - LSP Status
 
 ]#
-proc newRestartItem(title: string, pathToFile: string, action: static string): LspItem = 
+proc newRestartItem(title: string, pathToFile: string, action: static string): LspItem =
   # patth to file * == restart all
   let restartItem = vscode.newTreeItem(title, TreeItemCollapsibleState_None)
   restartItem.command = newJsObject()
   restartItem.command.command = "nim.onLspSuggest".cstring
   restartItem.command.title = title.cstring
   #Notice the actions here corresponds to SuggestAction in the lsp rathen than capabilities
-  restartItem.command.arguments = @[cstring(action), pathToFile.cstring]   
-  restartItem.iconPath = vscode.themeIcon("debug-restart", vscode.themeColor("notificationsWarningIcon.foreground"))
+  restartItem.command.arguments = @[cstring(action), pathToFile.cstring]
+  restartItem.iconPath = vscode.themeIcon(
+    "debug-restart", vscode.themeColor("notificationsWarningIcon.foreground")
+  )
   cast[LspItem](restartItem)
 
-proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil): seq[LspItem] =
+proc getChildrenImpl(
+    self: NimLangServerStatusProvider, element: LspItem = nil
+): seq[LspItem] =
   if element.isNil: #Root
-      @[
-        newLspItem("LSP Status", "", "", TreeItemCollapsibleState_Collapsed),
-        newLspItem("LSP Notifications", "", "", TreeItemCollapsibleState_Expanded)
-      ]
+    @[
+      newLspItem("LSP Status", "", "", TreeItemCollapsibleState_Collapsed),
+      newLspItem("LSP Notifications", "", "", TreeItemCollapsibleState_Expanded),
+    ]
   elif element.label == "LSP Notifications":
-    return globalNotificationActionItems() & self.notifications.mapIt(newNotificationItem(it))
+    return
+      globalNotificationActionItems() & self.notifications.mapIt(
+        newNotificationItem(it)
+      )
   elif element.isNotificationItem:
     return notificationActionItems(element)
   else:
     if self.status.isNone:
-      return @[newLspItem("Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None)]
+      return
+        @[
+          newLspItem(
+            "Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None
+          )
+        ]
     if element.label == "LSP Status":
-      var topElements = @[
-          newLspItem("Langserver", self.status.get.lspPath), 
+      var topElements =
+        @[
+          newLspItem("Langserver", self.status.get.lspPath),
           newLspItem("Version", self.status.get.version),
-          newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Expanded)
-        ] & self.status.get.openFiles.mapIt(newLspItem("Open File:", it, "", TreeItemCollapsibleState_Collapsed))
+          newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Expanded),
+        ] &
+        self.status.get.openFiles.mapIt(
+          newLspItem("Open File:", it, "", TreeItemCollapsibleState_Collapsed)
+        )
       if excRestartSuggest in ext.lspExtensionCapabilities:
-        topElements.insert(newRestartItem("Restart All nimsuggest", "", "restartAll"), topElements.len - 2)
+        topElements.insert(
+          newRestartItem("Restart All nimsuggest", "", "restartAll"),
+          topElements.len - 2,
+        )
       if self.status.get.pendingRequests.len > 0:
-        topElements.add(newLspItem(&"Pending Requests ({self.status.get.pendingRequests.len})", "", "", TreeItemCollapsibleState_Expanded))
+        topElements.add(
+          newLspItem(
+            &"Pending Requests ({self.status.get.pendingRequests.len})",
+            "",
+            "",
+            TreeItemCollapsibleState_Expanded,
+          )
+        )
       if self.status.get.projectErrors.len > 0:
-        let iconPath = some vscode.themeIcon("error", vscode.themeColor("notificationsErrorIcon.foreground"))
-        topElements.add(newLspItem(&"Project Errors ({self.status.get.projectErrors.len})", "", "", TreeItemCollapsibleState_Expanded, iconPath = iconPath))
+        let iconPath = some vscode.themeIcon(
+          "error", vscode.themeColor("notificationsErrorIcon.foreground")
+        )
+        topElements.add(
+          newLspItem(
+            &"Project Errors ({self.status.get.projectErrors.len})",
+            "",
+            "",
+            TreeItemCollapsibleState_Expanded,
+            iconPath = iconPath,
+          )
+        )
       return topElements
-    elif element.label == "Open File:" and excRestartSuggest in ext.lspExtensionCapabilities:
+    elif element.label == "Open File:" and
+        excRestartSuggest in ext.lspExtensionCapabilities:
       return @[newRestartItem("Restart", $element.description, "restart")]
     elif ($element.label).contains("Project Errors"):
       let projectErrors = self.status.get.projectErrors
-      return projectErrors.mapIt(newLspItem(it.projectFile, "", "", TreeItemCollapsibleState_Expanded, projectError = some it))
+      return projectErrors.mapIt(
+        newLspItem(
+          it.projectFile,
+          "",
+          "",
+          TreeItemCollapsibleState_Expanded,
+          projectError = some it,
+        )
+      )
     elif element.projectError.to(Option[ProjectError]).isSome:
       let pe = element.projectError.to(Option[ProjectError]).get()
-      return @[
-         newLspItem("Nimsuggest instance", pe.projectFile, "", TreeItemCollapsibleState_None),
-         newLspItem("Error:", pe.errorMessage, "", TreeItemCollapsibleState_None),
-         newLspItem("Last Known Ns Cmd:", pe.lastKnownCmd, "", TreeItemCollapsibleState_None)
-      ]
+      return
+        @[
+          newLspItem(
+            "Nimsuggest instance", pe.projectFile, "", TreeItemCollapsibleState_None
+          ),
+          newLspItem("Error:", pe.errorMessage, "", TreeItemCollapsibleState_None),
+          newLspItem(
+            "Last Known Ns Cmd:", pe.lastKnownCmd, "", TreeItemCollapsibleState_None
+          ),
+        ]
     elif ($element.label).contains("Pending Requests"):
       let pendingRequests = self.status.get.pendingRequests
-      return pendingRequests.mapIt(newLspItem(it.name, "", "", TreeItemCollapsibleState_Expanded, pendingRequest = some it))
+      return pendingRequests.mapIt(
+        newLspItem(
+          it.name, "", "", TreeItemCollapsibleState_Expanded, pendingRequest = some it
+        )
+      )
     elif element.pendingRequest.to(Option[PendingRequestStatus]).isSome:
       let pr = element.pendingRequest.to(Option[PendingRequestStatus]).get()
       let timeTitle = if pr.state == "OnGoing": "Waiting for " else: "Took"
-      var prElements = @[        
-        newLspItem(timeTitle.cstring, pr.time, "", TreeItemCollapsibleState_None),
-        newLspItem("State", (pr.state).cstring, "", TreeItemCollapsibleState_None),
-      ]
+      var prElements =
+        @[
+          newLspItem(timeTitle.cstring, pr.time, "", TreeItemCollapsibleState_None),
+          newLspItem("State", (pr.state).cstring, "", TreeItemCollapsibleState_None),
+        ]
       if pr.projectFile != "":
-        prElements.add(newLspItem("NimSuggest", pr.projectFile, "", TreeItemCollapsibleState_None))
+        prElements.add(
+          newLspItem("NimSuggest", pr.projectFile, "", TreeItemCollapsibleState_None)
+        )
       return prElements
     elif element.label == "NimSuggest Instances":
       # Children of Nim Suggest Instances
-      var instances = self.status.get.nimsuggestInstances.mapIt(newLspItem(it.projectFile, "", "", TreeItemCollapsibleState_Collapsed, some it))
+      var instances = self.status.get.nimsuggestInstances.mapIt(
+        newLspItem(it.projectFile, "", "", TreeItemCollapsibleState_Collapsed, some it)
+      )
       return instances
     elif element.label == "Open Files": #come from below
-      return element.instance.get.openFiles.mapIt(newLspItem("File:", it, "", TreeItemCollapsibleState_None))
-    elif element.instance.isSome:     
+      return element.instance.get.openFiles.mapIt(
+        newLspItem("File:", it, "", TreeItemCollapsibleState_None)
+      )
+    elif element.instance.isSome:
       # Children of a specific instance
       let instance = element.instance.get
-      var nsItems = @[
-        newLspItem("Project File", instance.projectFile),
-        newLspItem("Capabilities", instance.capabilities.join(", ").cstring),
-        newLspItem("Version", instance.version),
-        newLspItem("Path", instance.path),
-        newLspItem("Port", cstring($instance.port)),
-        newLspItem("Open Files", "", "", TreeItemCollapsibleState_Collapsed, instance = element.instance),
-        newLspItem("Unknown Files", instance.unknownFiles.join(", ").cstring)
-      ]      
+      var nsItems =
+        @[
+          newLspItem("Project File", instance.projectFile),
+          newLspItem("Capabilities", instance.capabilities.join(", ").cstring),
+          newLspItem("Version", instance.version),
+          newLspItem("Path", instance.path),
+          newLspItem("Port", cstring($instance.port)),
+          newLspItem(
+            "Open Files",
+            "",
+            "",
+            TreeItemCollapsibleState_Collapsed,
+            instance = element.instance,
+          ),
+          newLspItem("Unknown Files", instance.unknownFiles.join(", ").cstring),
+        ]
       if excRestartSuggest in ext.lspExtensionCapabilities:
         let restartItem = newRestartItem("Restart", $instance.projectFile, "restart")
         nsItems.insert(restartItem, 0)
       return nsItems
     return @[]
 
-proc getTreeItemImpl(self: NimLangServerStatusProvider, element: TreeItem): Future[TreeItem] {.async.}=
+proc getTreeItemImpl(
+    self: NimLangServerStatusProvider, element: TreeItem
+): Future[TreeItem] {.async.} =
   return element
 
 proc newNimLangServerStatusProvider*(): NimLangServerStatusProvider =
@@ -635,19 +773,23 @@ proc newNimLangServerStatusProvider*(): NimLangServerStatusProvider =
   provider.status = none(NimLangServerStatus)
   provider.notifications = @[]
   provider.lastId = 1
-  provider.getTreeItem = proc (element: TreeItem): Future[TreeItem] =
+  provider.getTreeItem = proc(element: TreeItem): Future[TreeItem] =
     getTreeItemImpl(provider, element)
-  provider.getChildren = proc (element: LspItem): seq[LspItem] = 
-     getChildrenImpl(provider, element)
+  provider.getChildren = proc(element: LspItem): seq[LspItem] =
+    getChildrenImpl(provider, element)
   provider
 
-proc refreshLspStatus*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) =
+proc refreshLspStatus*(
+    self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus
+) =
   self.status = some(lspStatus)
   self.emitter.fire(nil)
   # console.log(lspStatus.projectErrors)
   ext.addExtensionCapabilities(lspStatus.extensionCapabilities)
 
-proc refreshNotifications*(self: NimLangServerStatusProvider, notifications: seq[Notification]) =
+proc refreshNotifications*(
+    self: NimLangServerStatusProvider, notifications: seq[Notification]
+) =
   self.notifications = notifications
   self.emitter.fire(nil)
 
