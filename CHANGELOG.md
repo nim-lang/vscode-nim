@@ -1,5 +1,16 @@
 # ChangeLog
 
+## 1.2.0 (23 Sep 2024)
+* Restart nimsuggest per file basis from the status panel.
+* Restart all nimsuggest instances from the status panel.
+* Restart nimsuggest command now restart the nimsuggest project associated to the current file.
+* Adds pending requests panel to the status panel. Useful for debugging the lsp server.
+* Adds project errors panel to the status panel. Useful for debugging nimsuggest crashes.
+* Adds support for optional `socket` transport mode for connecting to the lsp server.
+* Snippet improvements
+* Fixes an issue where the extension crashes if there is no workspace
+* Retrieves the lsp extension capabilities from the server when available (server >= 1.5.2) 
+
 ## 1.0.2 (11 Ago 2024)
 * Prioritize $HOME/.nimble/bin in getBinPath
 
