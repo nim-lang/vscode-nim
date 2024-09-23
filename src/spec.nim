@@ -31,9 +31,11 @@ type
   ProjectError* = object
     projectFile*: cstring 
     errorMessage*: cstring
+    lastKnownCmd*: cstring
 
   NimLangServerStatus* = object
     version*: cstring
+    lspPath*: cstring
     nimsuggestInstances*: seq[NimSuggestStatus]
     openFiles*: seq[cstring]
     extensionCapabilities*: seq[cstring]

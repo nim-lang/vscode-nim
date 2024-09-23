@@ -563,12 +563,12 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
       return @[newLspItem("Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None)]
     if element.label == "LSP Status":
       var topElements = @[
+          newLspItem("Langserver", self.status.get.lspPath), 
           newLspItem("Version", self.status.get.version),
-          newLspItem("nimlangserver path", "TODO"),          
           newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Expanded)
         ] & self.status.get.openFiles.mapIt(newLspItem("Open File:", it, "", TreeItemCollapsibleState_Collapsed))
       if excRestartSuggest in ext.lspExtensionCapabilities:
-        topElements.insert(newRestartItem("Restart All nimsuggest", "", "restartAll"), 1)
+        topElements.insert(newRestartItem("Restart All nimsuggest", "", "restartAll"), topElements.len - 2)
       if self.status.get.pendingRequests.len > 0:
         topElements.add(newLspItem(&"Pending Requests ({self.status.get.pendingRequests.len})", "", "", TreeItemCollapsibleState_Expanded))
       if self.status.get.projectErrors.len > 0:
@@ -584,7 +584,8 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
       let pe = element.projectError.to(Option[ProjectError]).get()
       return @[
          newLspItem("Nimsuggest instance", pe.projectFile, "", TreeItemCollapsibleState_None),
-         newLspItem("Error:", pe.errorMessage, "", TreeItemCollapsibleState_None)
+         newLspItem("Error:", pe.errorMessage, "", TreeItemCollapsibleState_None),
+         newLspItem("Last Known Ns Cmd:", pe.lastKnownCmd, "", TreeItemCollapsibleState_None)
       ]
     elif ($element.label).contains("Pending Requests"):
       let pendingRequests = self.status.get.pendingRequests
