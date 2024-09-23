@@ -241,7 +241,8 @@ proc startSocket(nimlangserver: cstring, state: ExtensionState): proc (): Future
   startClientSocket(portPromise)
 
 proc fetchLsp*[T, U](state: ExtensionState, name: string, params: U): Future[T] {.async.} = 
-  let response = await state.client.sendRequest(name, params.toJs())
+  console.log("[FetchLsp] ", name, params.toJs())
+  let response = await state.client.sendRequest(name, params)
   let res = jsonStringify(response).jsonParse(T)
   console.log(res)
   return res
@@ -257,7 +258,7 @@ proc addExtensionCapabilities(state: ExtensionState, caps: seq[cstring]) =
       state.lspExtensionCapabilities.incl extCap
     except ValueError:
       console.error(("Error parsing server extension capability " & cap).cstring)
-  outputLine(fmt" Lsp Server Extension Capabilities: {state.lspExtensionCapabilities}".cstring)
+  # outputLine(fmt" Lsp Server Extension Capabilities: {state.lspExtensionCapabilities}".cstring)
 
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let (rawPath, lspPathKind) = getLspPath(state)
@@ -428,24 +429,38 @@ proc fetchLspStatus*(state: ExtensionState): Future[NimLangServerStatus] {.async
   return lspStatus
 
 proc newLspItem*(label: cstring, description: cstring = "", tooltip: cstring = "", 
-  collapsibleState: int = 0, 
-  instance: Option[NimSuggestStatus] = none(NimSuggestStatus), 
-  pendingRequest: Option[PendingRequestStatus] = none(PendingRequestStatus),
-  notification: Option[Notification] = none(Notification)): LspItem =
-  
+    collapsibleState: int = 0, 
+    instance: Option[NimSuggestStatus] = none(NimSuggestStatus), 
+    iconPath: Option[JsObject] = none(JsObject),
+    pendingRequest: Option[PendingRequestStatus] = none(PendingRequestStatus),
+    projectError: Option[ProjectError] = none(ProjectError),
+    notification: Option[Notification] = none(Notification)
+  ): LspItem =
   let statusItem = vscode.newTreeItem(label, collapsibleState)
   statusItem.description = description
   statusItem.tooltip = tooltip
   statusItem.instance = instance
   statusItem.notification = notification
   statusItem.pendingRequest = pendingRequest
+  statusItem.projectError = projectError
+  if iconPath.isSome:
+    statusItem.iconPath = iconPath.get
   cast[LspItem](statusItem)
 
 proc onLspSuggest*(action, projectFile: cstring) {.async.} = 
   #Handles extension/suggest calls 
   #(right now only from the restart button in the suggest instance from the nim panel)
+  var projectFile = projectFile
+  if projectFile == "current":
+    var activeEditor: VscodeTextEditor = vscode.window.activeTextEditor
+    console.log("llega")
+    if activeEditor.isNil(): return
+    projectFile = activeEditor.document.fileName
+    console.log(projectFile)
+
   case action:
-  of "restart":      
+  of "restart", "restartAll":      
+    outputLine((&"Path to file {projectFile}").cstring)
     let suggestParams = JsObject()
     suggestParams.action = action
     suggestParams.projectFile = projectFile
@@ -522,14 +537,14 @@ proc globalNotificationActionItems(): seq[LspItem] =
     - LSP Status
 
 ]#
-proc newRestartItem(title: string, pathToFile: string): LspItem = 
+proc newRestartItem(title: string, pathToFile: string, action: static string): LspItem = 
   # patth to file * == restart all
   let restartItem = vscode.newTreeItem(title, TreeItemCollapsibleState_None)
   restartItem.command = newJsObject()
   restartItem.command.command = "nim.onLspSuggest".cstring
   restartItem.command.title = title.cstring
   #Notice the actions here corresponds to SuggestAction in the lsp rathen than capabilities
-  restartItem.command.arguments = @[cstring("restart"), pathToFile.cstring]   
+  restartItem.command.arguments = @[cstring(action), pathToFile.cstring]   
   restartItem.iconPath = vscode.themeIcon("debug-restart", vscode.themeColor("notificationsWarningIcon.foreground"))
   cast[LspItem](restartItem)
 
@@ -548,18 +563,30 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
       return @[newLspItem("Waiting for nimlangserver to init", "", "", TreeItemCollapsibleState_None)]
     if element.label == "LSP Status":
       var topElements = @[
-
+          newLspItem("Langserver", self.status.get.lspPath), 
           newLspItem("Version", self.status.get.version),
-          #TODO add lsp path
           newLspItem("NimSuggest Instances", "", "", TreeItemCollapsibleState_Expanded)
         ] & self.status.get.openFiles.mapIt(newLspItem("Open File:", it, "", TreeItemCollapsibleState_Collapsed))
       if excRestartSuggest in ext.lspExtensionCapabilities:
-        topElements.insert(newRestartItem("Restart All nimsuggest", "restartAll"), 0)
+        topElements.insert(newRestartItem("Restart All nimsuggest", "", "restartAll"), topElements.len - 2)
       if self.status.get.pendingRequests.len > 0:
         topElements.add(newLspItem(&"Pending Requests ({self.status.get.pendingRequests.len})", "", "", TreeItemCollapsibleState_Expanded))
+      if self.status.get.projectErrors.len > 0:
+        let iconPath = some vscode.themeIcon("error", vscode.themeColor("notificationsErrorIcon.foreground"))
+        topElements.add(newLspItem(&"Project Errors ({self.status.get.projectErrors.len})", "", "", TreeItemCollapsibleState_Expanded, iconPath = iconPath))
       return topElements
     elif element.label == "Open File:" and excRestartSuggest in ext.lspExtensionCapabilities:
-      return @[newRestartItem("Restart", "restart")]
+      return @[newRestartItem("Restart", $element.description, "restart")]
+    elif ($element.label).contains("Project Errors"):
+      let projectErrors = self.status.get.projectErrors
+      return projectErrors.mapIt(newLspItem(it.projectFile, "", "", TreeItemCollapsibleState_Expanded, projectError = some it))
+    elif element.projectError.to(Option[ProjectError]).isSome:
+      let pe = element.projectError.to(Option[ProjectError]).get()
+      return @[
+         newLspItem("Nimsuggest instance", pe.projectFile, "", TreeItemCollapsibleState_None),
+         newLspItem("Error:", pe.errorMessage, "", TreeItemCollapsibleState_None),
+         newLspItem("Last Known Ns Cmd:", pe.lastKnownCmd, "", TreeItemCollapsibleState_None)
+      ]
     elif ($element.label).contains("Pending Requests"):
       let pendingRequests = self.status.get.pendingRequests
       return pendingRequests.mapIt(newLspItem(it.name, "", "", TreeItemCollapsibleState_Expanded, pendingRequest = some it))
@@ -592,7 +619,7 @@ proc getChildrenImpl(self: NimLangServerStatusProvider, element: LspItem = nil):
         newLspItem("Unknown Files", instance.unknownFiles.join(", ").cstring)
       ]      
       if excRestartSuggest in ext.lspExtensionCapabilities:
-        let restartItem = newRestartItem("Restart", $instance.projectFile)
+        let restartItem = newRestartItem("Restart", $instance.projectFile, "restart")
         nsItems.insert(restartItem, 0)
       return nsItems
     return @[]
@@ -602,7 +629,6 @@ proc getTreeItemImpl(self: NimLangServerStatusProvider, element: TreeItem): Futu
 
 proc newNimLangServerStatusProvider*(): NimLangServerStatusProvider =
   let provider = cast[NimLangServerStatusProvider](newJsObject())
-  # provider.onDidChangeTreeData = proc(element: JsObject) = 
   let emitter = vscode.newEventEmitter()
   provider.emitter = emitter
   provider.onDidChangeTreeData = emitter.event
@@ -618,6 +644,7 @@ proc newNimLangServerStatusProvider*(): NimLangServerStatusProvider =
 proc refreshLspStatus*(self: NimLangServerStatusProvider, lspStatus: NimLangServerStatus) =
   self.status = some(lspStatus)
   self.emitter.fire(nil)
+  # console.log(lspStatus.projectErrors)
   ext.addExtensionCapabilities(lspStatus.extensionCapabilities)
 
 proc refreshNotifications*(self: NimLangServerStatusProvider, notifications: seq[Notification]) =
