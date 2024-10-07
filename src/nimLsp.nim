@@ -120,6 +120,7 @@ proc getLspPath(state: ExtensionState): (cstring, LSPInstallPathKind) =
     If the local binary is not found, we try to use the global nimlangserver binary.
   ]#
   var lspPath = vscode.workspace.getConfiguration("nim").getStr("lsp.path")
+  console.log("path is ", lspPath)
   if lspPath.isValidLspPath:
     return (lspPath, lspPathSetting)
   var langserverExec: cstring = "nimlangserver"
@@ -131,7 +132,7 @@ proc getLspPath(state: ExtensionState): (cstring, LSPInstallPathKind) =
   lspPath = getBinPath("nimlangserver")
   if isValidLspPath(lspPath):
     return (lspPath, lspPathGlobal)
-  return ("", lspPathInvalid)
+  return ("".cstring, lspPathInvalid)
 
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.}
 
@@ -330,7 +331,7 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
         "Unable to find/install `nimlangserver`. You can attempt to install it by running `nimble install nimlangserver` or downloading the binaries from https://github.com/nim-lang/langserver/releases."
       vscode.window.showInformationMessage(cantInstallInfoMesssage)
   else:
-    let nimlangserver = path.resolve(rawPath)
+    let nimlangserver = path.resolve(rawPath).quoteOnlyWin()
     outputLine(fmt"nimlangserver found: {nimlangserver}".cstring)
     outputLine("Starting nimlangserver.")
     let latestVersion = await getLatestReleasedLspVersion(MinimalLSPVersion)
