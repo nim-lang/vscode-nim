@@ -2,7 +2,7 @@
 
 import platform/vscodeApi
 import platform/js/[jsNodeFs, jsNodePath, jsString]
-import std/[jscore, strformat, sequtils, hashes]
+import std/[jscore, strformat, sequtils, hashes, os]
 
 import spec
 
@@ -87,3 +87,8 @@ proc cleanDateString(date: DateTime): cstring =
 proc outputLine*(message: cstring): void =
   ## Prints message in Nim's output channel
   channel.appendLine(fmt"{cleanDateString(newDate())} - {message}".cstring)
+
+proc quoteOnlyWin*(path: cstring): cstring = 
+  result = path
+  if process.platform == "win32":
+    result = quoteShellWindows($path).cstring
