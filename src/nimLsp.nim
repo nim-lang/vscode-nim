@@ -120,7 +120,6 @@ proc getLspPath(state: ExtensionState): (cstring, LSPInstallPathKind) =
     If the local binary is not found, we try to use the global nimlangserver binary.
   ]#
   var lspPath = vscode.workspace.getConfiguration("nim").getStr("lsp.path")
-  console.log("path is ", lspPath)
   if lspPath.isValidLspPath:
     return (lspPath, lspPathSetting)
   var langserverExec: cstring = "nimlangserver"
