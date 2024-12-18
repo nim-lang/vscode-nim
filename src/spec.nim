@@ -60,10 +60,22 @@ type
 
   LSPVersion* = tuple[major: int, minor: int, patch: int]
 
+  NimbleTask* = object
+    name*: cstring
+    description*: cstring
+  
+  RunTaskParams* = object
+    command*: seq[cstring] #command and args
+  
+  RunTaskResult* = object
+    command*: seq[cstring] #command and args
+    output*: seq[cstring] #output lines
+
   LspExtensionCapability* = enum #List of extensions the lsp server support.
     excNone = "None"
     excRestartSuggest = "RestartSuggest"
-
+    excNimbleTask = "NimbleTask"
+        
   ExtensionState* = ref object
     ctx*: VscodeExtensionContext
     config*: VscodeWorkspaceConfiguration
@@ -76,6 +88,7 @@ type
     statusProvider*: NimLangServerStatusProvider
     lspVersion*: LSPVersion
     lspExtensionCapabilities*: set[LspExtensionCapability]
+    nimbleTasks*: seq[NimbleTask]
 
 # type
 #   SolutionKind* {.pure.} = enum

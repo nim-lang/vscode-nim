@@ -279,7 +279,7 @@ proc fetchLsp*[T, U](
     state: ExtensionState, name: string, params: U
 ): Future[T] {.async.} =
   console.log("[FetchLsp] ", name, params.toJs())
-  let response = await state.client.sendRequest(name, params)
+  let response = await state.client.sendRequest(name, params.toJs())
   let res = jsonStringify(response).jsonParse(T)
   console.log(res)
   return res
@@ -293,7 +293,7 @@ proc addExtensionCapabilities(state: ExtensionState, caps: seq[cstring]) =
       let extCap = parseEnum[LspExtensionCapability]($cap)
       state.lspExtensionCapabilities.incl extCap
     except ValueError:
-      console.error(("Error parsing server extension capability " & cap).cstring)
+      console.error(("Error parsing server extension capability " & cap))
   # outputLine(fmt" Lsp Server Extension Capabilities: {state.lspExtensionCapabilities}".cstring)
 
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
@@ -422,6 +422,9 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
         let nots = state.statusProvider.notifications & @[notification]
         refreshNotifications(state.statusProvider, nots),
     )
+
+    state.nimbleTasks = await fetchLsp[seq[NimbleTask]](state, "extension/tasks")
+
     let expiredTime = state.config.getInt("notificationTimeout")
     if expiredTime > 0:
       global.setInterval(
@@ -606,6 +609,78 @@ proc globalNotificationActionItems(): seq[LspItem] =
     vscode.themeIcon("trash", vscode.themeColor("notificationsErrorIcon.foreground"))
   @[cast[LspItem](item)]
 
+proc onNimbleTask*(name: cstring) {.async.} =  
+  console.log("Executing onNimbleTask", name)
+  let taskParams = RunTaskParams(command: @[name])
+  
+  vscode.window
+  .withProgress(
+    VscodeProgressOptions{
+      location: VscodeProgressLocation.notification,
+      cancellable: false,
+      title: cstring(fmt"Nim: running task '{name}'..."),
+    },
+    proc(): Promise[RunTaskResult] =
+      fetchLsp[RunTaskResult, RunTaskParams](ext, "extension/runTask", taskParams),
+  )
+  .then(
+    proc(taskResult: RunTaskResult) =
+      outputLine(fmt"Task {name} finished".cstring)
+      for line in taskResult.output:
+        outputLine(line)
+      
+      let panel = vscode.window.createWebviewPanel(
+        "nimTask",
+        cstring(fmt"Nim Task: {name}"),
+        ViewColumn.one,
+        WebviewPanelOptions()
+      )
+      
+      panel.webview.html = cstring(&"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body {{ 
+              padding: 10px;
+              font-family: var(--vscode-editor-font-family);
+              font-size: var(--vscode-editor-font-size);
+            }}
+            pre {{
+              background-color: var(--vscode-editor-background);
+              padding: 10px;
+              border-radius: 4px;
+              overflow-x: auto;
+            }}
+          </style>
+        </head>
+        <body>
+          <h2>Task: {name}</h2>
+          <h3>Command:</h3>
+          <pre>{taskResult.command.join(" ")}</pre>
+          <h3>Output:</h3>
+          <pre>{taskResult.output.join("\n")}</pre>
+        </body>
+        </html>
+      """)
+      
+  )
+  .catch(
+    proc(reason: JsObject) =
+      console.error("nimvscode - onNimbleTask Failed", reason)
+  )
+
+proc newNimbleTaskItem(task: NimbleTask): LspItem =
+  let item = vscode.newTreeItem(task.name, TreeItemCollapsibleState_None)
+  item.description = task.description
+  item.command = newJsObject()
+  item.command.command = "nim.onNimbleTask".cstring
+  item.command.title = task.name.cstring
+  item.command.arguments = @[task.name.toJs()]
+  item.iconPath = vscode.themeIcon("debug-start", vscode.themeColor("notificationsInfoIcon.foreground"))
+  cast[LspItem](item)
+
 #[
   - Root
     - Notifications
@@ -629,10 +704,13 @@ proc getChildrenImpl(
     self: NimLangServerStatusProvider, element: LspItem = nil
 ): seq[LspItem] =
   if element.isNil: #Root
-    @[
+    var rootItems = @[
       newLspItem("LSP Status", "", "", TreeItemCollapsibleState_Collapsed),
       newLspItem("LSP Notifications", "", "", TreeItemCollapsibleState_Expanded),
     ]
+    if excNimbleTask in ext.lspExtensionCapabilities:
+      rootItems.add(newLspItem("Nimble Tasks", "", "", TreeItemCollapsibleState_Expanded))
+    return rootItems
   elif element.label == "LSP Notifications":
     return
       globalNotificationActionItems() & self.notifications.mapIt(
@@ -765,6 +843,11 @@ proc getChildrenImpl(
         let restartItem = newRestartItem("Restart", $instance.projectFile, "restart")
         nsItems.insert(restartItem, 0)
       return nsItems
+    elif element.label == "Nimble Tasks":
+      var elements = newSeq[LspItem]()  
+      for task in ext.nimbleTasks:
+        elements.add(newNimbleTaskItem(task))
+      return elements
     return @[]
 
 proc getTreeItemImpl(
