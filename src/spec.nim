@@ -1,5 +1,5 @@
 ## Types for extension state, this should either get fleshed out or removed
-import std/[options, times]
+import std/[options, times, strutils, jsconsole]
 import platform/vscodeApi
 
 from platform/languageClientApi import VscodeLanguageClient
@@ -90,6 +90,8 @@ type
     lspVersion*: LSPVersion
     lspExtensionCapabilities*: set[LspExtensionCapability]
     nimbleTasks*: seq[NimbleTask]
+    
+   
 
 # type
 #   SolutionKind* {.pure.} = enum
@@ -146,4 +148,25 @@ proc markTaskAsRunning*(state: ExtensionState, name: cstring, isRunning: bool) =
     if task.name == name:
       task.isRunning = isRunning
       break
-  
+
+proc addExtensionCapabilities*(state: ExtensionState, caps: seq[cstring]) =
+  for cap in caps:
+    try:
+      let extCap = parseEnum[LspExtensionCapability]($cap)
+      state.lspExtensionCapabilities.incl extCap
+    except ValueError:
+      console.error(("Error parsing server extension capability " & cap))
+  # outputLine(fmt" Lsp Server Extension Capabilities: {state.lspExtensionCapabilities}".cstring)
+
+proc fetchLsp*[T, U](
+    state: ExtensionState, name: string, params: U
+): Future[T] {.async.} =
+  console.log("[FetchLsp] ", name, params.toJs())
+  let response = await state.client.sendRequest(name, params.toJs())
+  let res = jsonStringify(response).jsonParse(T)
+  console.log(res)
+  return res
+
+proc fetchLsp*[T](state: ExtensionState, name: string): Future[T] =
+  return fetchLsp[T, JsObject](state, name, ().toJs())
+

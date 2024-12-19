@@ -7,3 +7,4 @@ nimsuggest/nimsuggest
 *.vsix
 nimble.develop
 nimble.paths
+nimbledeps
