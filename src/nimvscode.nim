@@ -11,7 +11,7 @@ from std/os import `/`
 import spec
 import
   nimRename, nimSuggest, nimDeclaration, nimReferences, nimOutline, nimSignature,
-  nimHover, nimFormatting
+  nimHover, nimFormatting, nimLspStatusPanel
 
 from nimBuild import check, execSelectionInTerminal, activateEvalConsole, CheckResult
 from nimStatus import showHideStatus
@@ -356,6 +356,7 @@ proc setNimDir(state: ExtensionState) =
             fmt"[info] Using NimDir from nimble dump. NimDir: {state.nimDir}".cstring
           )
   )
+
 
 proc showNimLangServerStatus() {.async.} =
   let lspStatus = await fetchLspStatus(state)
