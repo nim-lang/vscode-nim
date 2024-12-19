@@ -394,6 +394,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
     "nim.onClearAllNotifications", onClearAllNotifications
   )
   vscode.commands.registerCommand("nim.onNimbleTask", onNimbleTask)
+  vscode.commands.registerCommand("nim.onRefreshNimbleTasks", refreshNimbleTasks)
   vscode.commands.registerCommand("nim.onLspSuggest", onLspSuggest)
 
   processConfig(config)

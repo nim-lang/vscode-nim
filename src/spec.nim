@@ -63,6 +63,7 @@ type
   NimbleTask* = object
     name*: cstring
     description*: cstring
+    isRunning*: bool
   
   RunTaskParams* = object
     command*: seq[cstring] #command and args
@@ -133,3 +134,16 @@ proc getNimCmd*(state: ExtensionState): cstring =
     "nim ".cstring
   else:
     (state.nimDir & "/nim ").cstring
+
+proc getTaskByName*(state: ExtensionState, name: cstring): Option[NimbleTask] =
+  for task in state.nimbleTasks:
+    if task.name == name:
+      return some task
+  none(NimbleTask)
+
+proc markTaskAsRunning*(state: ExtensionState, name: cstring, isRunning: bool) =
+  for task in state.nimbleTasks.mitems:
+    if task.name == name:
+      task.isRunning = isRunning
+      break
+  
