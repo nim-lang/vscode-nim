@@ -296,6 +296,9 @@ proc addExtensionCapabilities(state: ExtensionState, caps: seq[cstring]) =
       console.error(("Error parsing server extension capability " & cap))
   # outputLine(fmt" Lsp Server Extension Capabilities: {state.lspExtensionCapabilities}".cstring)
 
+proc refreshNimbleTasks*() {.async.} =
+  ext.nimbleTasks = await fetchLsp[seq[NimbleTask]](ext, "extension/tasks")
+
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let (rawPath, lspPathKind) = getLspPath(state)
   if lspPathKind == lspPathInvalid:
@@ -423,7 +426,7 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
         refreshNotifications(state.statusProvider, nots),
     )
 
-    state.nimbleTasks = await fetchLsp[seq[NimbleTask]](state, "extension/tasks")
+    await refreshNimbleTasks()
 
     let expiredTime = state.config.getInt("notificationTimeout")
     if expiredTime > 0:
@@ -610,6 +613,10 @@ proc globalNotificationActionItems(): seq[LspItem] =
   @[cast[LspItem](item)]
 
 proc onNimbleTask*(name: cstring) {.async.} =  
+  let task = ext.getTaskByName(name)
+  if task.isNone or task.get.isRunning:
+    console.log("Task already running or not found")
+    return
   console.log("Executing onNimbleTask", name)
   let taskParams = RunTaskParams(command: @[name])
   
@@ -621,10 +628,12 @@ proc onNimbleTask*(name: cstring) {.async.} =
       title: cstring(fmt"Nim: running task '{name}'..."),
     },
     proc(): Promise[RunTaskResult] =
+      ext.markTaskAsRunning(name, true)
       fetchLsp[RunTaskResult, RunTaskParams](ext, "extension/runTask", taskParams),
   )
   .then(
     proc(taskResult: RunTaskResult) =
+      ext.markTaskAsRunning(name, false)
       outputLine(fmt"Task {name} finished".cstring)
       for line in taskResult.output:
         outputLine(line)
@@ -671,15 +680,37 @@ proc onNimbleTask*(name: cstring) {.async.} =
       console.error("nimvscode - onNimbleTask Failed", reason)
   )
 
-proc newNimbleTaskItem(task: NimbleTask): LspItem =
+proc newNimbleTaskItem*(task: NimbleTask): LspItem =
   let item = vscode.newTreeItem(task.name, TreeItemCollapsibleState_None)
   item.description = task.description
   item.command = newJsObject()
   item.command.command = "nim.onNimbleTask".cstring
   item.command.title = task.name.cstring
   item.command.arguments = @[task.name.toJs()]
-  item.iconPath = vscode.themeIcon("debug-start", vscode.themeColor("notificationsInfoIcon.foreground"))
+  # item.iconPath = vscode.themeIcon("debug-start", vscode.themeColor("notificationsInfoIcon.foreground"))
+  
+  # Set different icon based on running state
+  if task.isRunning:
+    item.iconPath = vscode.themeIcon(
+      "sync~spin", # This is VSCode's built-in spinning icon
+      vscode.themeColor("activityBarBadge.background")
+    )
+  else:
+    item.iconPath = vscode.themeIcon(
+      "play-circle",
+      vscode.themeColor("terminal.ansiGreen")
+    )
+    
   cast[LspItem](item)
+
+proc newRefreshNimbleTasksItem*(): LspItem =
+  let item = vscode.newTreeItem("Refresh Nimble Tasks", TreeItemCollapsibleState_None)
+  item.command = newJsObject()
+  item.command.command = "nim.onRefreshNimbleTasks".cstring
+  item.command.title = "Refresh Nimble Tasks".cstring
+  item.iconPath = vscode.themeIcon("refresh", vscode.themeColor("notificationsInfoIcon.foreground"))
+  cast[LspItem](item)
+
 
 #[
   - Root
@@ -704,12 +735,13 @@ proc getChildrenImpl(
     self: NimLangServerStatusProvider, element: LspItem = nil
 ): seq[LspItem] =
   if element.isNil: #Root
-    var rootItems = @[
+    var rootItems =  @[
       newLspItem("LSP Status", "", "", TreeItemCollapsibleState_Collapsed),
-      newLspItem("LSP Notifications", "", "", TreeItemCollapsibleState_Expanded),
     ]
     if excNimbleTask in ext.lspExtensionCapabilities:
       rootItems.add(newLspItem("Nimble Tasks", "", "", TreeItemCollapsibleState_Expanded))
+    
+    rootItems.add(newLspItem("LSP Notifications", "", "", TreeItemCollapsibleState_Expanded))
     return rootItems
   elif element.label == "LSP Notifications":
     return
@@ -844,10 +876,8 @@ proc getChildrenImpl(
         nsItems.insert(restartItem, 0)
       return nsItems
     elif element.label == "Nimble Tasks":
-      var elements = newSeq[LspItem]()  
-      for task in ext.nimbleTasks:
-        elements.add(newNimbleTaskItem(task))
-      return elements
+      return @[newRefreshNimbleTasksItem()] &
+        ext.nimbleTasks.mapIt(newNimbleTaskItem(it))
     return @[]
 
 proc getTreeItemImpl(
