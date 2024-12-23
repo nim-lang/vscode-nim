@@ -9,7 +9,7 @@ import
   platform/js/
     [jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs, jsNodeNet, jsPromise]
 import nimutils
-from tools/nimBinTools import getNimbleExecPath, getBinPath
+from tools/nimBinTools import getNimbleExecPath, getBinPath, execNimbleCmd
 import spec
 
 type LSPInstallPathKind = enum
@@ -141,32 +141,18 @@ proc installNimLangServer(state: ExtensionState, version: Option[LSPVersion]) =
     let v = version.get
     installCmd.add("@" & &"{v.major}.{v.minor}.{v.patch}")
   let args: seq[cstring] = @[installCmd.cstring, "--accept", "-l"]
-  var process = cp.spawn(
-    getNimbleExecPath(), args, SpawnOptions(shell: true, cwd: getLocalLspDir())
-  )
-  process.stdout.onData(
-    proc(data: Buffer) =
-      outputLine(data.toString())
-  )
-  process.stderr.onData(
-    proc(data: Buffer) =
-      let msg = $data.toString()
-      if msg.contains("Warning: "):
-        outputLine(("[Warning]" & msg).cstring)
-      else:
-        outputLine(("[Error]" & msg).cstring)
-  )
-  process.onClose(
-    proc(code: cint, signal: cstring): void =
-      if code == 0:
-        outputLine("Nimble install successfully")
-        discard startLanguageServer(false, state)
-        console.log(
-          "Nimble install finished, validating by checking if nimlangserver is present."
-        )
-      else:
-        outputLine("Nimble install failed.")
-  )
+  
+  proc onClose (code: cint, signal: cstring): void =
+    if code == 0:
+      outputLine("Nimble install successfully")
+      discard startLanguageServer(false, state)
+      console.log(
+        "Nimble install finished, validating by checking if nimlangserver is present."
+      )
+    else:
+      outputLine("Nimble install failed.")
+  
+  execNimbleCmd(args, getLocalLspDir(), onClose)
 
 proc notifyOrUpdateOnTheLSPVersion(current, latest: LSPVersion, state: ExtensionState) =
   if latest > current:

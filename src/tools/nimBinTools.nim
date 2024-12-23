@@ -96,3 +96,22 @@ proc getNimPrettyExecPath*(): cstring =
 proc getNimbleExecPath*(): cstring =
   ## full path to nimble executable or an empty string if not found
   return getOptionalToolPath("nimble")
+
+
+proc execNimbleCmd*(args: seq[cstring], dirPath: cstring, onCloseCb: proc(code: cint, signal: cstring): void {.closure.}) = 
+    var process = cp.spawn(
+      getNimbleExecPath(), @["setup".cstring], SpawnOptions(shell: true, cwd: dirPath)
+    )
+    process.stdout.onData(
+      proc(data: Buffer) =
+        outputLine(data.toString())
+    )
+    process.stderr.onData(
+      proc(data: Buffer) =
+        let msg = $data.toString()
+        if msg.contains("Warning: "):
+          outputLine(("[Warning]" & msg).cstring)
+        else:
+          outputLine(("[Error]" & msg).cstring)
+    )
+    process.onClose(onCloseCb)

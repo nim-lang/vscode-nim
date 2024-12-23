@@ -430,6 +430,11 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Format the file on save. Lsp backend only. Requires nph for formatting."
+                },
+                "nim.nimbleAutoSetup":{
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically run nimble setup when a .nimble file is detected in the current directory."
                 }
             }
         },

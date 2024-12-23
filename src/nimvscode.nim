@@ -362,6 +362,44 @@ proc showNimLangServerStatus() {.async.} =
   let lspStatus = await fetchLspStatus(state)
   state.statusProvider.refresh(lspStatus)
 
+proc showNimbleSetupDialog() =
+  if not nimUtils.ext.config.getBool("nimbleAutoSetup"):
+    return
+  let editor = vscode.window.activeTextEditor
+  if editor.isNil():
+    return
+
+  let document = editor.document
+  let filePath = document.fileName
+  let dirPath = path.dirname(filePath)
+  
+  # Check if there's a .nimble file in the directory
+  var hasNimbleFile = false
+  try:
+    let files = fs.readdirSync(dirPath)
+    for file in files:
+      if ($file).endsWith(".nimble"):
+        hasNimbleFile = true
+        break
+  except:
+    return
+
+  if not hasNimbleFile:
+    return
+    
+  let nimblePathsFile = path.join(dirPath, "nimble.paths")
+  if fs.existsSync(nimblePathsFile):
+    return
+
+  proc onClose(code: cint, signal: cstring): void =
+    if code == 0:
+      outputLine("nimble setup ran successfully")
+      vscode.window.showInformationMessage("nimble setup ran successfully. A path file has been created with all the dependencies search paths.")
+    else:
+      outputLine("nimble setup failed")
+  execNimbleCmd(@["setup".cstring], dirPath, onClose)
+
+
 proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   var config = vscode.workspace.getConfiguration("nim")
   state = ExtensionState(
@@ -582,6 +620,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
 
   discard initImports()
   outputLine("[info] Extension Activated")
+  showNimbleSetupDialog()
 
 proc deactivate*(): void {.async.} =
   let provider = nimUtils.ext.config.getStr("provider")
