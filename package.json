@@ -431,6 +431,11 @@
                     "default": false,
                     "description": "Format the file on save. Lsp backend only. Requires nph for formatting."
                 },
+                "nim.useNimCheck":{
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Use nim check instead of nimsuggest for linting. Controls lsp backend behavior."
+                },
                 "nim.nimbleAutoSetup":{
                     "type": "boolean",
                     "default": true,
