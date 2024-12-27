@@ -1,6 +1,8 @@
 {
   "fileTypes": [
-    "nim"
+    "nim",
+    "nims",
+    "nimble"
   ],
   "keyEquivalent": "^~N",
   "name": "Nim",
