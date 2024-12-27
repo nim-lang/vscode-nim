@@ -67,7 +67,8 @@
                     ".nim",
                     ".nims",
                     "nim.cfg",
-                    ".nim.cfg"
+                    ".nim.cfg",
+                    ".nimble"
                 ],
                 "configuration": "./nimcfg.json"
             },
@@ -91,8 +92,8 @@
             },
             {
                 "language": "nimble",
-                "scopeName": "source.nimble",
-                "path": "./syntaxes/nimble.json"
+                "scopeName": "source.nim",
+                "path": "./syntaxes/nim.json"
             }
         ],
         "problemMatchers": [

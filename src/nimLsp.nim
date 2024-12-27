@@ -327,7 +327,11 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
       }
       clientOptions = LanguageClientOptions{
         documentSelector:
-          @[DocumentFilter(scheme: cstring("file"), language: cstring("nim"))],
+          @[
+            DocumentFilter(scheme: cstring("file"), language: cstring("nim")),
+            DocumentFilter(scheme: cstring("file"), language: cstring("nimble")),
+            DocumentFilter(scheme: cstring("file"), language: cstring("nims")),
+          ],
         outputChannel: state.lspChannel,
       }
     let config = vscode.workspace.getConfiguration("nim")
