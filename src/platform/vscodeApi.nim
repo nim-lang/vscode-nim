@@ -622,6 +622,13 @@ type
     preserveFocus*: bool
     preview*: bool
     selection*: VscodeRange
+    isPreview*: bool
+
+  VscodeDocumentOptions* = ref object
+    content*: cstring
+    language*: cstring
+    scheme*: cstring  
+    uri*: VscodeUri
 
 # static function
 proc newWorkspaceEdit*(
@@ -1116,3 +1123,13 @@ proc createTextDocument*(
   workspace: VscodeWorkspace,
   content: cstring
 ): Future[VscodeTextDocument] {.importcpp: "#.openTextDocument({content: #})".}
+
+proc createTextDocument*(
+  workspace: VscodeWorkspace,
+  options: VscodeDocumentOptions
+): Future[VscodeTextDocument] {.importcpp: "#.openTextDocument(#)".}
+
+proc openTextDocument*(
+  workspace: VscodeWorkspace,
+  uri: VscodeUri
+): Future[VscodeTextDocument] {.importcpp: "#.openTextDocument(#)".}
