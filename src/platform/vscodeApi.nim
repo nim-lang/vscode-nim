@@ -187,6 +187,10 @@ type
   VscodeMarkedString* = ref VscodeMarkedStringObj
   VscodeMarkedStringObj {.importc.} = object of JsObject
 
+  VscodeDecorationOptions* = ref object
+    range*: VscodeRange
+
+ 
 proc then*(
   self: VscodeThenable,
   onfulfilled: proc(value: JsRoot): JsRoot,
@@ -519,6 +523,8 @@ type
 
   VscodeCommands* = ref VscodeCommandsObj
   VscodeCommandsObj {.importc.} = object of JsObject
+    title*: cstring
+    command*: cstring
 
   VscodeDebug* = ref VscodeDebugObj
   VscodeDebugObj {.importc.} = object of JsObject
@@ -555,21 +561,19 @@ type
     languages*: VscodeLanguages
     debug*: VSCodeDebug
 
-  ViewColumn* {.size: sizeof(int32).} = enum
+  VscodeViewColumn* {.size: sizeof(int32).} = enum
+    beside = -2
+    active = -1
     one = 1
     two = 2
-    three = 3
 
-  WebviewPanelOptions* = object
-    enableFindWidget*: bool
-    retainContextWhenHidden*: bool
-
-  WebviewOptions* = object
+  VscodeWebviewPanelOptions* = ref object of JsObject
     enableScripts*: bool
     enableForms*: bool
     enableCommandUris*: bool
     localResourceRoots*: seq[string]
     portMapping*: seq[JsObject]
+    retainContextWhenHidden*: bool
       # You can define a more specific type for port mapping if needed
 
   TreeItem* = ref object of JsObject
@@ -586,6 +590,45 @@ type
 
   # TreeDataProvider* = ref object of JsObject
   #   onDidChangeTreeData*: EventEmitter
+  VscodeTextEditorSelectionChangeEvent* = ref object of JsObject
+    textEditor*: VscodeTextEditor
+  
+  VscodeCodeLensProvider* = ref VscodeCodeLensProviderObj
+  VscodeCodeLensProviderObj {.importc.} = object of JsObject
+
+  VscodeCodeLens* = ref VscodeCodeLensObj
+  VscodeCodeLensObj {.importc.} = object of JsObject
+    range*: VscodeRange
+    command*: VscodeCommands
+  VscodeThemableDecorationAttachmentRenderOptions* = ref object of JsObject
+    contentText*: cstring
+    color*: cstring
+    backgroundColor*: cstring
+    margin*: cstring
+    border*: cstring
+    fontFamily*: cstring
+    padding*: cstring
+
+  VscodeDecorationRenderOptions* = ref object of JsObject
+    after*: VscodeThemableDecorationAttachmentRenderOptions
+    isWholeLine*: bool
+    backgroundColor*: cstring
+
+  VscodeTextEditorDecorationType* = ref VscodeTextEditorDecorationTypeObj
+  VscodeTextEditorDecorationTypeObj {.importc.} = object of JsObject
+  
+  VscodeTextDocumentShowOptions* = ref object
+    viewColumn*: VscodeViewColumn
+    preserveFocus*: bool
+    preview*: bool
+    selection*: VscodeRange
+    isPreview*: bool
+
+  VscodeDocumentOptions* = ref object
+    content*: cstring
+    language*: cstring
+    scheme*: cstring  
+    uri*: VscodeUri
 
 # static function
 proc newWorkspaceEdit*(
@@ -679,6 +722,10 @@ proc newVscodeHover*(
 proc newVscodeHover*(
   vscode: Vscode, contents: Array[VscodeMarkedString], `range`: VscodeRange
 ): VscodeHover {.importcpp: "(new #.Hover(@))".}
+
+proc newCodeLens*(
+  vscode: Vscode, range: VscodeRange, command: VscodeCommands
+): VscodeCodeLens {.importcpp: "(new #.CodeLens(@))".}
 
 proc uriFile*(vscode: Vscode, file: cstring): VscodeUri {.importcpp: "(#.Uri.file(@))".}
 proc newWorkspaceFolderLike*(
@@ -894,6 +941,12 @@ proc registerWorkspaceSymbolProvider*(
   langs: VscodeLanguages, provider: VscodeWorkspaceSymbolProvider
 ): VscodeDisposable {.importcpp.}
 
+proc registerCodeLensProvider*(
+  langs: VscodeLanguages,
+  selector: VscodeDocumentFilter,
+  provider: VscodeCodeLensProvider,
+): VscodeDisposable {.importcpp.}
+
 # Window
 proc createTerminal*(window: VscodeWindow, name: cstring): VscodeTerminal {.importcpp.}
 proc withProgress*[R](
@@ -929,6 +982,10 @@ proc onDidChangeActiveTextEditor*[T](
   disposables: Array[VscodeDisposable],
 ): VscodeDisposable {.importcpp, discardable.}
 
+proc onDidChangeTextEditorSelection*(
+  window: VscodeWindow, listener: proc(e: VscodeTextEditorSelectionChangeEvent): void
+): VscodeDisposable {.importcpp, discardable.}
+
 proc showQuickPick*(
   window: VscodeWindow, items: Array[VscodeQuickPickItem]
 ): Future[VscodeQuickPickItem] {.importcpp.}
@@ -946,8 +1003,8 @@ proc createWebviewPanel*(
   window: VscodeWindow,
   viewType: cstring,
   title: cstring,
-  showOptions: ViewColumn,
-  options: WebviewPanelOptions,
+  showOptions: VscodeViewColumn,
+  options: VscodeWebviewPanelOptions,
 ): JsObject {.importjs: "#.createWebviewPanel(@)".}
 
 proc createWebviewPanel*(
@@ -955,7 +1012,7 @@ proc createWebviewPanel*(
   viewType: cstring,
   title: cstring,
   showOptions: JsObject,
-  options: WebviewPanelOptions,
+  options: VscodeWebviewPanelOptions,
 ): JsObject {.importjs: "#.createWebviewPanel(@)".}
 
 proc newEventEmitter*(
@@ -1038,3 +1095,41 @@ var vscode*: Vscode = require("vscode").to(Vscode)
 ##
 ## Union types for function input params arguments: https://forum.nim-lang.org/t/1628
 ## Nim ES2015 class macros: https://github.com/kristianmandrup/nim_es2015_classes/blob/master/src/es_class.nim
+
+proc newCodeLensProvider*(
+  provideCodeLenses: proc(document: VscodeTextDocument, token: VscodeCancellationToken): seq[VscodeCodeLens]
+): VscodeCodeLensProvider {.importcpp: """({
+  provideCodeLenses: #
+})""".}
+
+proc createTextEditorDecorationType*(
+  self: VscodeWindow, 
+  options: VscodeDecorationRenderOptions
+): VscodeTextEditorDecorationType {.importcpp: "#.createTextEditorDecorationType(#)".}
+
+proc setDecorations*(
+  editor: VscodeTextEditor,
+  decorationType: VscodeTextEditorDecorationType,
+  rangeOrOptions: openArray[VscodeDecorationOptions]
+) {.importcpp: "#.setDecorations(#, #)".}
+
+proc showTextDocument*(
+  window: VscodeWindow,
+  document: VscodeTextDocument,
+  options: VscodeTextDocumentShowOptions = nil
+): Future[VscodeTextEditor] {.importcpp.}
+
+proc createTextDocument*(
+  workspace: VscodeWorkspace,
+  content: cstring
+): Future[VscodeTextDocument] {.importcpp: "#.openTextDocument({content: #})".}
+
+proc createTextDocument*(
+  workspace: VscodeWorkspace,
+  options: VscodeDocumentOptions
+): Future[VscodeTextDocument] {.importcpp: "#.openTextDocument(#)".}
+
+proc openTextDocument*(
+  workspace: VscodeWorkspace,
+  uri: VscodeUri
+): Future[VscodeTextDocument] {.importcpp: "#.openTextDocument(#)".}

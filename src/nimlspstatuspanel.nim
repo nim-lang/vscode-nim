@@ -56,7 +56,7 @@ proc getWebviewContent(status: NimLangServerStatus): cstring =
 
 proc displayStatusInWebview(status: NimLangServerStatus) =
   let panel = vscode.window.createWebviewPanel(
-    "nim", "Nim", ViewColumn.one, WebviewPanelOptions()
+    "nim", "Nim", VscodeViewColumn.one, VscodeWebviewPanelOptions()
   )
   panel.webview.html = getWebviewContent(status)
 
@@ -203,8 +203,8 @@ proc onNimbleTask*(name: cstring) {.async.} =
       let panel = vscode.window.createWebviewPanel(
         "nimTask",
         cstring(fmt"Nim Task: {name}"),
-        ViewColumn.one,
-        WebviewPanelOptions()
+        VscodeViewColumn.one,
+        VscodeWebviewPanelOptions()
       )
       
       panel.webview.html = cstring(&"""
