@@ -22,7 +22,7 @@ from nimSuggestExec import
 from nimUtils import ext, getDirtyFile, outputLine
 from nimProjects import processConfig, configUpdate
 from nimMode import mode
-import nimLsp
+import nimLsp, nimcodelenses
 
 var state: ExtensionState
 var diagnosticCollection {.threadvar.}: VscodeDiagnosticCollection
@@ -621,6 +621,26 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   discard initImports()
   outputLine("[info] Extension Activated")
   showNimbleSetupDialog()
+
+  let nimbleCodeLensProvider = newCodeLensProvider(provideNimbleTasksCodeLenses)
+  ctx.subscriptions.add(
+    vscode.languages.registerCodeLensProvider(
+      VscodeDocumentFilter(language: "nimble", scheme: "file"),
+      nimbleCodeLensProvider
+    )
+  )
+
+  # Watch for .nimble files
+  let nimbleWatcher = vscode.workspace.createFileSystemWatcher("**/*.nimble")
+  nimbleWatcher.onDidChange(proc(uri: VscodeUri) =
+    # console.log("*********nimbleWatcher.onDidChange called", uri)
+    if uri.path == vscode.window.activeTextEditor.document.uri.path:
+      discard refreshNimbleTasks()
+    #TODO update tasks here
+      # provideNimbleTasksDecorations(ctx, vscode.window.activeTextEditor.document)
+  )
+  ctx.subscriptions.add(nimbleWatcher)
+ 
 
 proc deactivate*(): void {.async.} =
   let provider = nimUtils.ext.config.getStr("provider")
