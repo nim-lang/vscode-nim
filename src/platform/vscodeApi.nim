@@ -178,7 +178,7 @@ type
     isDirty*: bool
     languageId*: cstring
     isUntitled*: bool
-
+    lineCount*: cint
   VscodeHoverLabel* = ref object
     # Not explictly named in vscode API, see type literal under MarkedString
     language*: cstring
@@ -189,33 +189,9 @@ type
 
   VscodeDecorationOptions* = ref object
     range*: VscodeRange
+    hoverMessage*: cstring
+    command*: VscodeCommands
 
- 
-proc then*(
-  self: VscodeThenable,
-  onfulfilled: proc(value: JsRoot): JsRoot,
-  onrejected: proc(reason: JsRoot): JsRoot,
-): VscodeThenable {.importcpp, discardable.}
-
-proc cstringToMarkedString(s: cstring): VscodeMarkedString {.importcpp: "#".}
-converter toVscodeMarkedString*(s: cstring): VscodeMarkedString =
-  s.cstringToMarkedString()
-
-proc hoverLabelToMarkedString(
-  s: VscodeHoverLabel
-): VscodeMarkedString {.importcpp: "#".}
-
-converter toVscodeMarkedString*(s: VscodeHoverLabel): VscodeMarkedString =
-  s.hoverLabelToMarkedString()
-
-proc markdownStringToMarkedString(
-  s: VscodeMarkdownString
-): VscodeMarkedString {.importcpp: "#".}
-
-converter toVscodeMarkedString*(s: VscodeMarkdownString): VscodeMarkedString =
-  s.markdownStringToMarkedString()
-
-type
   VscodeHover* = ref VscodeHoverObj
   VscodeHoverObj {.importc.} = object of JsObject
     contents*: Array[VscodeMarkedString]
@@ -387,7 +363,7 @@ type
   VscodeReadDirResultObj {.importc.} = object of JsRoot
 
   VscodeFileSystemWatcher* = ref VscodeFileSystemWatcherObj
-  VscodeFileSystemWatcherObj {.importc.} = object of JsRoot
+  VscodeFileSystemWatcherObj {.importc.} = object of VscodeDisposable
 
   ## A memento represents a storage utility. It can store and retrieve
   ## values.
@@ -613,6 +589,10 @@ type
     after*: VscodeThemableDecorationAttachmentRenderOptions
     isWholeLine*: bool
     backgroundColor*: cstring
+    before*: VscodeThemableDecorationAttachmentRenderOptions
+    gutterIconPath*: cstring
+    gutterIconSize*: cstring
+
 
   VscodeTextEditorDecorationType* = ref VscodeTextEditorDecorationTypeObj
   VscodeTextEditorDecorationTypeObj {.importc.} = object of JsObject
@@ -629,6 +609,34 @@ type
     language*: cstring
     scheme*: cstring  
     uri*: VscodeUri
+
+
+ 
+proc then*(
+  self: VscodeThenable,
+  onfulfilled: proc(value: JsRoot): JsRoot,
+  onrejected: proc(reason: JsRoot): JsRoot,
+): VscodeThenable {.importcpp, discardable.}
+
+proc cstringToMarkedString(s: cstring): VscodeMarkedString {.importcpp: "#".}
+converter toVscodeMarkedString*(s: cstring): VscodeMarkedString =
+  s.cstringToMarkedString()
+
+proc hoverLabelToMarkedString(
+  s: VscodeHoverLabel
+): VscodeMarkedString {.importcpp: "#".}
+
+converter toVscodeMarkedString*(s: VscodeHoverLabel): VscodeMarkedString =
+  s.hoverLabelToMarkedString()
+
+proc markdownStringToMarkedString(
+  s: VscodeMarkdownString
+): VscodeMarkedString {.importcpp: "#".}
+
+converter toVscodeMarkedString*(s: VscodeMarkdownString): VscodeMarkedString =
+  s.markdownStringToMarkedString()
+
+
 
 # static function
 proc newWorkspaceEdit*(
@@ -814,6 +822,10 @@ proc createFileSystemWatcher*(
   ws: VscodeWorkspace, glob: cstring
 ): VscodeFileSystemWatcher {.importcpp.}
 
+proc getDocument*(
+  ws: VscodeWorkspace, uri: cstring
+): VscodeTextDocument {.importcpp.}
+
 proc applyEdit*(
   ws: VscodeWorkspace, e: VscodeWorkspaceEdit
 ): Future[bool] {.importcpp, discardable.}
@@ -860,6 +872,10 @@ proc onDidCreate*(
 ): VscodeDisposable {.importcpp, discardable.}
 
 proc onDidDelete*(
+  w: VscodeFileSystemWatcher, listener: proc(uri: VscodeUri): void
+): VscodeDisposable {.importcpp, discardable.}
+
+proc onDidChange*(
   w: VscodeFileSystemWatcher, listener: proc(uri: VscodeUri): void
 ): VscodeDisposable {.importcpp, discardable.}
 
@@ -985,6 +1001,7 @@ proc onDidChangeActiveTextEditor*[T](
 proc onDidChangeTextEditorSelection*(
   window: VscodeWindow, listener: proc(e: VscodeTextEditorSelectionChangeEvent): void
 ): VscodeDisposable {.importcpp, discardable.}
+
 
 proc showQuickPick*(
   window: VscodeWindow, items: Array[VscodeQuickPickItem]
@@ -1133,3 +1150,5 @@ proc openTextDocument*(
   workspace: VscodeWorkspace,
   uri: VscodeUri
 ): Future[VscodeTextDocument] {.importcpp: "#.openTextDocument(#)".}
+
+proc asAbsolutePath*(ctx: VscodeExtensionContext, relativePath: cstring): cstring {.importjs: "#.asAbsolutePath(#)".}

@@ -8,6 +8,9 @@ export jsffi, jsPromise, jsNode
 type
   VscodeLanguageClient* = ref VscodeLanguageClientObj
   VscodeLanguageClientObj {.importc.} = object of JsRoot
+  VscodeLanguageClientMiddleware* = ref VscodeLanguageClientMiddlewareObj
+  VscodeLanguageClientMiddlewareObj {.importc.} = object of JsObject
+    provideInlayHints*: proc(document: JsObject, viewPort: JsObject, token: JsObject, next: JsObject): Promise[JsObject]
 
   TransportKind* {.pure.} = enum
     stdio = 0
@@ -65,6 +68,10 @@ proc sendRequest*(
 proc onNotification*(
   s: VscodeLanguageClient, m: cstring, cb: proc(data: JsObject)
 ) {.importcpp: "#.onNotification(@)".}
+
+proc onRequest*(
+  s: VscodeLanguageClient, m: cstring, cb: proc(data: JsObject): Future[JsObject]
+) {.importcpp: "#.onRequest(@)".}
 
 var vscodeLanguageClient*: VscodeLanguageClient =
   require("vscode-languageclient/node").to(VscodeLanguageClient)
