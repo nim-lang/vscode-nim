@@ -187,7 +187,7 @@ type
   VscodeMarkedString* = ref VscodeMarkedStringObj
   VscodeMarkedStringObj {.importc.} = object of JsObject
 
-  VscodeDecorationOptions* = ref object
+  VscodeDecorationOptions* = ref object of VscodeDisposable
     range*: VscodeRange
     hoverMessage*: cstring
     command*: VscodeCommands
@@ -592,8 +592,9 @@ type
     before*: VscodeThemableDecorationAttachmentRenderOptions
     gutterIconPath*: cstring
     gutterIconSize*: cstring
-
-
+    border*: cstring
+    textDecoration*: cstring
+    color*: cstring
   VscodeTextEditorDecorationType* = ref VscodeTextEditorDecorationTypeObj
   VscodeTextEditorDecorationTypeObj {.importc.} = object of JsObject
   

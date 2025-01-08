@@ -10,7 +10,7 @@ type
   VscodeLanguageClientObj {.importc.} = object of JsRoot
   VscodeLanguageClientMiddleware* = ref VscodeLanguageClientMiddlewareObj
   VscodeLanguageClientMiddlewareObj {.importc.} = object of JsObject
-    provideInlayHints*: proc(document: JsObject, viewPort: JsObject, token: JsObject, next: JsObject): Promise[JsObject]
+    provideInlayHints*: proc(document: JsObject, viewPort: JsObject, token: JsObject, next: JsObject): Promise[seq[InlayHint]]
 
   TransportKind* {.pure.} = enum
     stdio = 0
@@ -42,6 +42,28 @@ type
   LanguageClientOptionsObj* {.importc.} = object of JsObject
     documentSelector*: seq[DocumentFilter]
     outputChannel*: VscodeOutputChannel
+  
+  InlayHint* = ref object of JsRoot
+    position*: VscodePosition
+    label*: cstring  # Can be string or InlayHintLabelPart[]
+    kind*: InlayHintKind
+    textEdits*: seq[VscodeTextEdit]
+    tooltip*: cstring
+    paddingLeft*: bool
+    paddingRight*: bool
+
+  InlayHintLabel* = ref object of JsRoot  # Union type: string | InlayHintLabelPart[]
+
+  InlayHintLabelPart* = ref object of JsRoot
+    value*: cstring
+    tooltip*: cstring
+    location*: VscodeLocation
+    command*: VscodeCommands
+
+  InlayHintKind* {.pure.} = enum
+    Type = 1
+    Parameter = 2
+
 
 proc newLanguageClient*(
   cl: VscodeLanguageClient,

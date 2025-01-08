@@ -1,7 +1,7 @@
 import
   std/[
     jsconsole, strutils, jsfetch, asyncjs, sugar, sequtils, options, strformat, times,
-    sets,
+    sets, tables
   ]
 import platform/[vscodeApi, languageClientApi]
 
@@ -272,6 +272,45 @@ proc startSocket(
 proc refreshNimbleTasks*() {.async.} =
   ext.nimbleTasks = await fetchLsp[seq[NimbleTask]](ext, "extension/tasks")
 
+proc provideInlayHints(self: JsObject, document: JsObject, viewPort: JsObject, token: JsObject, next: JsObject): Promise[seq[InlayHint]] {.importjs: "#(@)".}
+proc provideInlayHints(document: JsObject, viewPort: JsObject, token: JsObject, next: JsObject): Promise[seq[InlayHint]] {.async.}=
+  var hintsToReturn = newSeq[InlayHint]()
+  let inlayHints = next.provideInlayHints(document, viewPort, token, next).await
+  let decorationType: VscodeTextEditorDecorationType = vscode.window.createTextEditorDecorationType(
+    VscodeDecorationRenderOptions(
+      textDecoration: "underline #0CAFFF"
+    )
+  )
+  let doc = document.to(VscodeTextDocument)
+  let uri = doc.fileName  
+  if uri in ext.propagatedDecorations:
+    for decoration in ext.propagatedDecorations[uri]:
+      decoration.dispose()
+  
+  var decorationRanges: seq[VscodeDecorationOptions] = @[]
+  let propagatedExceptionSymbol = vscode.workspace.getConfiguration("nim").getStr("inlayHints.exceptionHints.hintStringLeft")
+  for hint in inlayHints:
+    if hint.label == propagatedExceptionSymbol:
+      # console.log("🔔 found. Skipping", hint)
+      let wordRange: VscodeRange = doc.getWordRangeAtPosition(hint.position)
+      let pos: VscodePosition = hint.position      
+      decorationRanges.add(VscodeDecorationOptions(
+        range: wordRange,
+        hoverMessage: hint.tooltip
+      ))
+      if uri notin ext.propagatedDecorations:
+        ext.propagatedDecorations[uri] = newSeq[VscodeTextEditorDecorationType]()
+      ext.propagatedDecorations[uri].add(decorationType)
+    else:
+      hintsToReturn.add(hint)
+  
+  if decorationRanges.len > 0:
+    let editor = vscode.window.activeTextEditor
+    if not editor.isNil:
+      editor.setDecorations(decorationType, decorationRanges)
+  
+  return hintsToReturn
+
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
   let (rawPath, lspPathKind) = getLspPath(state)
   if lspPathKind == lspPathInvalid:
@@ -333,6 +372,7 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
             DocumentFilter(scheme: cstring("file"), language: cstring("nims")),
           ],
         outputChannel: state.lspChannel,
+        middleware: VscodeLanguageClientMiddleware(provideInlayHints: provideInlayHints),
       }
     let config = vscode.workspace.getConfiguration("nim")
     let transportMode = config.getStr("transportMode")
