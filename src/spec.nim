@@ -1,5 +1,5 @@
 ## Types for extension state, this should either get fleshed out or removed
-import std/[options, times, strutils, jsconsole]
+import std/[options, times, strutils, jsconsole, tables]
 import platform/vscodeApi
 
 from platform/languageClientApi import VscodeLanguageClient
@@ -90,6 +90,7 @@ type
     lspVersion*: LSPVersion
     lspExtensionCapabilities*: set[LspExtensionCapability]
     nimbleTasks*: seq[NimbleTask]
+    propagatedDecorations*: Table[cstring, seq[VscodeTextEditorDecorationType]]
     
    
 
