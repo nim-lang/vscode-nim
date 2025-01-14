@@ -1,4 +1,14 @@
 # ChangeLog
+## 1.4.0 (14 Jan 2025)
+* Adds support for `nimble` files.
+* Adds `nimble tasks` to the status panel.
+* nimble tasks can be ran from the nimble file.
+* Automatically calls `nimble setup` when a nimble project is detected.
+* Replaces the bell icon with a blue underline for propagated exceptions.
+* From the lsp: 
+  - Macro expansion on hover.
+  - ARC expansion on hover.
+  - `nim check` is the default backend for linting (use `"nim.useNimCheck": false` to revert to `nimsuggest chk`).
 
 ## 1.2.0 (23 Sep 2024)
 * Restart nimsuggest per file basis from the status panel.

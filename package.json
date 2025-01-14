@@ -293,9 +293,10 @@
                 },
                 "nim.lintOnSave": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Check code by using 'nim check' on save.",
-                    "scope": "resource"
+                    "scope": "resource",
+                    "deprecationMessage": "Deprecated: Please use the Nim language server backend instead."
                 },
                 "nim.enableNimsuggest": {
                     "type": "boolean",
@@ -320,7 +321,8 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Use nimsuggest in order to run check, instead of the nim compiler.",
-                    "scope": "resource"
+                    "scope": "resource",
+                    "deprecationMessage": "Deprecated: Please use the Nim language server backend instead."
                 },
                 "nim.logNimsuggest": {
                     "type": "boolean",
