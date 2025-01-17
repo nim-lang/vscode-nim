@@ -275,17 +275,20 @@ proc runFile(ignore: bool, isDebug: bool = false): void =
       if outputDirConfig.toJs().to(bool):
         if vscode.workspace.workspaceFolders.toJs().to(bool):
           var rootPath: cstring = ""
+          let currentFileDir = path.dirname(editor.document.fileName)
+          rootPath = currentFileDir
           for folder in vscode.workspace.workspaceFolders:
-            if folder.uri.scheme == "file":
+            if folder.uri.scheme == "file" and editor.document.fileName.startsWith(folder.uri.fsPath):
               rootPath = folder.uri.fsPath
               break
+              
           if rootPath != "":
-            if not fs.existsSync(path.join(rootPath, outputDirConfig)):
-              fs.mkdirSync(path.join(rootPath, outputDirConfig))
+            let outputDir = path.join(rootPath, outputDirConfig)
+            if not fs.existsSync(outputDir):
+              fs.mkdirSync(outputDir, recursive = true)
             outputParams =
               " --out:\"" &
-              path.join(
-                outputDirConfig, path.basename(editor.document.fileName, ".nim")
+              path.join(outputDir, path.basename(editor.document.fileName, ".nim")
               ) & "\""
 
       if editor.toJs().to(bool) and editor.document.isDirty:
@@ -309,9 +312,19 @@ proc debugFile() =
     typ = config.getStr("debug.type")
     editor = vscode.window.activeTextEditor
     filename = editor.document.fileName
-    filePath = path.join(
-      outputDirConfig, path.basename(editor.document.fileName).replace(".nim", "")
-    )
+    currentFileDir = path.dirname(filename)
+    
+    # Use file's directory as fallback
+    outputDir = if outputDirConfig.toJs().to(bool):
+      let workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri)
+      if not workspaceFolder.isNil():
+        path.join(workspaceFolder.uri.fsPath, outputDirConfig)
+      else:
+        path.join(currentFileDir, outputDirConfig)
+    else:
+      currentFileDir
+      
+    filePath = path.join(outputDir, path.basename(filename).replace(".nim", ""))
     workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri)
   #compiles the file
   runFile(ignore = false, isDebug = true)
