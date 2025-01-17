@@ -29,7 +29,7 @@ type
   NodeFileHandle* {.importc.} = ref object of JsRoot
 
 proc existsSync*(fs: Fs, file: cstring): bool {.importcpp.}
-proc mkdirSync*(fs: Fs, file: cstring): void {.importcpp.}
+proc mkdirSync*(fs: Fs, file: cstring, recursive: bool = false): void {.importcpp.}
 proc unlinkSync*(fs: Fs, file: cstring): void {.importcpp.}
 proc stat*(fs: Fs, file: cstring, cb: StatCallback): void {.importcpp.}
 proc statSync*(fs: Fs, file: cstring): FsStats {.importcpp.}
