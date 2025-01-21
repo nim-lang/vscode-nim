@@ -1,4 +1,10 @@
 # ChangeLog
+
+
+## 1.4.1 (21 Jan 2025)
+* Adds `nim.nimExpandArc` and `nim.nimExpandMacro` settings to control the expansion of ARC and macros on hover (requires nimlangserver >= 1.8.1).
+* Makes `nim.useNimCheck` false by default.
+
 ## 1.4.0 (14 Jan 2025)
 * Adds support for `nimble` files.
 * Adds `nimble tasks` to the status panel.
