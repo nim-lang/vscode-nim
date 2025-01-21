@@ -2,7 +2,7 @@
     "name": "nimlang",
     "displayName": "nim-lang.org",
     "description": "Nim extension maintained by the Nim compiler team.",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "publisher": "NimLang",
     "author": {
         "name": "NimLang"
@@ -436,8 +436,18 @@
                 },
                 "nim.useNimCheck":{
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Use nim check instead of nimsuggest for linting. Controls lsp backend behavior."
+                },
+                "nim.nimExpandArc":{
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Expand ARC on proc definition hover."
+                },
+                "nim.nimExpandMacro":{
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Expand macro calls on hover."
                 },
                 "nim.nimbleAutoSetup":{
                     "type": "boolean",
