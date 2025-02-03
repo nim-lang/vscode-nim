@@ -1509,19 +1509,23 @@
     "float_literal": {
       "patterns": [
         {
-          "match": "-?\\b0[xX]\\h[_\\h]*'([fF](32|64|128)|[fFdD])",
+          "match": "(-?\\b0[xX][0-9a-fA-F][_0-9a-fA-F]*'[a-zA-Z_][a-zA-Z0-9_]*)",
+          "name": "constant.numeric.custom.lit.nim"
+        },
+        {
+          "match": "-?\\b0[xX][0-9a-fA-F][_0-9a-fA-F]*'([fF](32|64|128)|[fFdD])",
           "name": "constant.numeric.float.hexadecimal.nim"
         },
         {
-          "match": "-?\\b0o[0-7][_0-7]*'([fF](32|64|128)|[fFdD])",
+          "match": "-?\\b0o[0-7][_0-7]*'([fF](32|64|128)|[fFdD]|[a-zA-Z_][a-zA-Z0-9_]*)",
           "name": "constant.numeric.float.octal.nim"
         },
         {
-          "match": "-?\\b0(b|B)[01][_01]*'([fF](32|64|128)|[fFdD])",
+          "match": "-?\\b0[bB][01][_01]*'([fF](32|64|128)|[fFdD]|[a-zA-Z_][a-zA-Z0-9_]*)",
           "name": "constant.numeric.float.binary.nim"
         },
         {
-          "match": "-?\\b(?<![^\\.]\\.)(((\\d[_\\d]*)(\\.(\\d[_\\d]*))?'([fF](32|64|128)|[fFdD]))|((\\d[_\\d]*)(\\.(\\d[_\\d]*))?e(-)?(\\d[_\\d]*)'([fF](32|64|128)|[fFdD]))|((\\d[_\\d]*)(\\.(\\d[_\\d]*))?e(-)?(\\d[_\\d]*)(?![a-zA-Z\\.]))|((\\d[_\\d]*)(\\.(\\d[_\\d]*))))\\b",
+          "match": "-?\\b(?<![^\\.]\\.)(((\\d[_\\d]*)(\\.(\\d[_\\d]*))?'([fF](32|64|128)|[fFdD]|[a-zA-Z_][a-zA-Z0-9_]*))|((\\d[_\\d]*)(\\.(\\d[_\\d]*))?[eE](-)?(\\d[_\\d]*)'?([fF](32|64|128)|[fFdD]|[a-zA-Z_][a-zA-Z0-9_]*)?)|((\\d[_\\d]*)(\\.(\\d[_\\d]*))))\\b",
           "name": "constant.numeric.float.decimal.nim"
         }
       ]
@@ -1529,19 +1533,23 @@
     "integer_literal": {
       "patterns": [
         {
-          "match": "-?\\b(0[xX]\\h[_\\h]*)('(([iIuU](8|16|32|64))|[uU]))?",
+          "match": "(-?\\b0[xX][0-9a-fA-F][_0-9a-fA-F]*'[a-zA-Z_][a-zA-Z0-9_]*)",
+          "name": "constant.numeric.custom.lit.nim"
+        },
+        {
+          "match": "-?\\b(0[xX][0-9a-fA-F][_0-9a-fA-F]*)('(([iIuU](8|16|32|64))|[uU]))?",
           "name": "constant.numeric.integer.hexadecimal.nim"
         },
         {
-          "match": "-?\\b(0o[0-7][_0-7]*)('(([iIuU](8|16|32|64))|[uU]))?",
+          "match": "-?\\b(0o[0-7][_0-7]*)('(([iIuU](8|16|32|64))|[uU]|[a-zA-Z_][a-zA-Z0-9_]*))?",
           "name": "constant.numeric.integer.octal.nim"
         },
         {
-          "match": "-?\\b(0(b|B)[01][_01]*)('(([iIuU](8|16|32|64))|[uU]))?",
+          "match": "-?\\b(0[bB][01][_01]*)('(([iIuU](8|16|32|64))|[uU]|[a-zA-Z_][a-zA-Z0-9_]*))?",
           "name": "constant.numeric.integer.binary.nim"
         },
         {
-          "match": "-?\\b(?<![^\\.]\\.)(\\d[_\\d]*)('(([iIuU](8|16|32|64))|[uU]))?",
+          "match": "-?\\b(?<![^\\.]\\.)(\\d[_\\d]*)('(([iIuU](8|16|32|64))|[uU]|[a-zA-Z_][a-zA-Z0-9_]*))?",
           "name": "constant.numeric.integer.decimal.nim"
         }
       ]
