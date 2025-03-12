@@ -1,0 +1,475 @@
+{
+    "name": "Nim: Dark Verdure",
+    "type": "dark",
+    "author": "AMS, based on the work of Dan Sullivan and Nimda",
+    "tokenColors": [
+
+        {
+            "name": "Comment",
+            "scope": "comment.block",
+            "settings": {
+                "foreground": "#00AF5F"
+            }
+        },
+        {
+            "name": "Comment",
+            "scope": "comment",
+            "settings": {
+                "foreground": "#00AF5F"
+            }
+        },
+		{
+            "name": "Comment, definition of",
+            "scope": "punctuation.definition.comment.nim",
+            "settings": {
+                "foreground": "#00AF5F"
+            }
+        },
+		
+		
+        {
+            "name": "String",
+            "scope": "string",
+            "settings": {
+                "foreground": "#FFFFFF"
+            }
+        },
+        {
+            "name": "String - begin",
+            "scope": "punctuation.definition.string.begin.nim",
+            "settings": {
+                "foreground": "#FFFFFF"
+            }
+        },
+        {
+            "name": "String - end",
+            "scope": "punctuation.definition.string.end.nim",
+            "settings": {
+                "foreground": "#FFFFFF"
+            }
+        },
+        {
+            "name": "Numeric constant",
+            "scope": "constant.numeric",
+            "settings": {
+                "foreground": "#FFFFFF"
+            }
+        },
+
+        // These four items in particular would benefit from a review by an experienced Nim coder.
+        {
+            "name": "A nim procedure or method (1)",
+            "scope": "keyword.other",
+            "settings": {
+                "foreground": "#00BFFF"
+            }
+        },
+        {
+            "name": "A nim procedure",
+            "scope": "entity.name.function.nim",
+            "settings": {
+                "foreground": "#BFFF0F"
+            }
+        },
+        {
+            "name": "A nim procedure or method (2) - catchall",
+            "scope": "entity.name",
+            "settings": {
+                "foreground": "#FFDFFF"
+            }
+        },
+        {
+            "name": "A nim procedure or method (3)",
+            "scope": "keyword.control.export",
+            "settings": {
+                "foreground": "#FFDFFF"
+            }
+        },
+
+        {
+            "name": "Export qualifier following a type def.",
+            "scope": "support.type.nim",
+            "settings": {
+                "foreground": "#00BFFF"
+            }
+        },
+        {
+            "name": "Language constants",
+            "scope": "constant.language.nim",
+            "settings": {
+                "foreground": "#DFFFDF"
+            }
+        },
+        {
+            "name": "Keywords that affect program control flow or scope",
+            "scope": "keyword.control.nim",
+            "settings": {
+                "foreground": "#00BFFF"
+            }
+        },
+        {
+            "name": "Keyword boolean operators for expressions",
+            "scope": "keyword.boolean.nim",
+            "settings": {
+                "foreground": "#EFEF8F"
+            }
+        },
+        {
+            "name": "Generic operators for expressions",
+            "scope": "keyword.operator.nim",
+            "settings": {
+                "foreground": "#EFEF8F"
+            }
+        },
+        {
+            "name": "Other keywords",
+            "scope": "keyword.other.nim",
+            "settings": {
+                "foreground": "#6FFFFF"
+            }
+        },
+        {
+            "name": "Invalid and unused keywords",
+            "scope": "invalid.illegal.invalid-keyword.nim",
+            "settings": {
+                "foreground": "#FF0000"
+            }
+        },
+        {
+            "name": "Common functions",
+            "scope": "keyword.other.common.function.nim",
+            "settings": {
+                "foreground": "#BFFF0F"
+            }
+        },
+        {
+            "name": "Built-in, concrete types",
+            "scope": "storage.type.concrete.nim",
+            "settings": {
+                "foreground": "#7FCFBF"
+            }
+        },
+        {
+            "name": "Built-in, generic types",
+            "scope": "storage.type.generic.nim",
+            "settings": {
+                "foreground": "#7FCFBF"
+            }
+        },
+        {
+            "name": "Special types",
+            "scope": "storage.type.generic.nim",
+            "settings": {
+                "foreground": "#7FCFBF"
+            }
+        },
+        {
+            "name": "Other constants",
+            "scope": "support.constant.nim",
+            "settings": {
+                "foreground": "#AFFFFF"
+            }
+        },
+        {
+            "name": "Other types",
+            "scope": "support.type.nim",
+            "settings": {
+                "foreground": "#7FCFBF"
+            }
+        },
+        {
+            "name": "Function call",
+            "scope": "support.function.any-method.nim",
+            "settings": {
+                "foreground": "#BFFF0F"
+            }
+        },
+        {
+			// Note: When colored brackets are active, '{' and'}' are colorized.
+            "name": "Pragmas - punctuation and definition",
+            "scope": "punctuation.pragma",
+            "settings": {
+                "foreground": "#C0C0C0"
+            }
+        },
+        {
+            "name": "Pragmas - name",
+            "scope": "meta.preprocessor.pragma.nim",
+            "settings": {
+                "foreground": "#C0C0C0"
+            }
+        },
+        {
+            "name": "Punctuation - other",
+            "scope": "punctuation",
+            "settings": {
+                "foreground": "#DFDF9F"
+            }
+        },
+        {
+            "name": "Keywords - other",
+            "scope": "keyword",
+            "settings": {
+                "foreground": "#AFFFFF"
+            }
+        },
+        {
+            "name": "Preprocessor directive",
+            "scope": "meta.preprocessor",
+            "settings": {
+                "foreground": "#FFEFCF"
+            }
+        },
+        {
+            "name": "meta - other",
+            "scope": "meta",
+            "settings": {
+                "foreground": "#AFFFFF"
+            }
+        },
+    ],
+    "colors": {
+        "focusBorder": "#080808",
+        "errorForeground": "#F3002B",
+
+        "button.foreground": "#FFFFFF",
+        "button.background": "#00A4F3",
+        "button.hoverBackground": "#0093DA",
+
+        "dropdown.border": "#50504F",
+
+        "input.border": "#50504F",
+        "inputOption.activeBorder": "#B2B2B1",
+
+        "list.activeSelectionForeground": "#cecece",
+        "list.activeSelectionBackground": "#212121",
+        "list.inactiveSelectionForeground": "#cecece",
+        "list.inactiveSelectionBackground": "#212121",
+        "list.hoverBackground": "#212121",
+        "list.focusBackground": "#212121",
+        "list.dropBackground": "#333332",
+        "list.highlightForeground": "#F8F8F2",
+        "list.errorForeground": "#F3002B",
+        "list.warningForeground": "#cecece",
+
+        "activityBar.foreground": "#f5f5f5",
+        "activityBar.background": "#080808",
+        "activityBarBadge.foreground": "#080808",
+        "activityBarBadge.background": "#cecece",
+
+        "sideBar.foreground": "#8C8C8A",
+        "sideBar.background": "#0c0c0c",
+        "sideBarSectionHeader.foreground": "#B2B2B1",
+        "sideBarSectionHeader.background": "#212121",
+
+        "terminal.background": "#080808",
+
+        "editorGroup.dropBackground": "#00000040",
+        "editorGroupHeader.tabsBackground": "#080808",
+        "tab.activeBorderTop": "#cecece",
+        "tab.unfocusedActiveBorderTop": "#080808",
+        "tab.border": "#080808",
+        "tab.activeBorder": "#080808",
+        "tab.activeBackground": "#000000",
+        "tab.inactiveBackground": "#212121",
+        "tab.unfocusedActiveBorder": "#080808",
+        "tab.hoverBackground": "#080808",
+        "tab.inactiveForeground": "#B2B2B1",
+        "tab.unfocusedActiveForeground": "#D0D0D0",
+        "tab.unfocusedInactiveForeground": "#8C8C8A",
+
+        "editor.foreground": "#F8F8F2",
+        "editor.background": "#080808",
+        "editorLineNumber.foreground": "#50504F",
+        "editorCursor.foreground": "#D0D0D0",
+
+        "editor.selectionBackground": "#50504F",
+        "editor.selectionHighlightBackground": "#3D3D3C",
+        "editor.inactiveSelectionBackground": "#3D3D3C",
+        "editor.wordHighlightBackground": "#333332",
+        "editor.wordHighlightStrongBackground": "#5b422c",
+
+        "editor.findMatchBackground": "#43a047",
+        "editor.findMatchHighlightBackground": "#5b422c",
+        "editor.findRangeHighlightBackground": "#50504F4D",
+
+        "editor.hoverHighlightBackground": "#333332",
+        "editor.lineHighlightBackground": "#212121",
+        "editor.lineHighlightBorder": "#292928",
+        "editorLink.activeForeground": "#8C8C8A",
+        "editor.rangeHighlightBackground": "#50504F4D",
+        "editorWhitespace.foreground": "#333332",
+        "editorIndentGuide.background": "#333332",
+        "editorIndentGuide.activeBackground": "#50504F",
+        "editorRuler.foreground": "#333332",
+        "editorCodeLens.foreground": "#6D6D6D",
+        "editorBracketMatch.background": "#333332",
+        "editorBracketMatch.border": "#50504F",
+
+        "editorOverviewRuler.findMatchForeground": "#DA0093",
+        "editorOverviewRuler.rangeHighlightForeground": "#50504F",
+        "editorOverviewRuler.selectionHighlightForeground": "#8C8C8A",
+        "editorOverviewRuler.wordHighlightForeground": "#8C8C8A",
+        "editorOverviewRuler.wordHighlightStrongForeground": "#DA0093",
+        "editorOverviewRuler.modifiedForeground": "#cecece",
+        "editorOverviewRuler.addedForeground": "#00F3C9",
+        "editorOverviewRuler.deletedForeground": "#F3002B",
+        "editorOverviewRuler.errorForeground": "#F3002B",
+        "editorOverviewRuler.warningForeground": "#cecece",
+        "editorOverviewRuler.infoForeground": "#00F3C9",
+
+        "editorError.foreground": "#F3002B",
+        "editorWarning.foreground": "#cecece",
+        "editorInfo.foreground": "#00F3C9",
+        "editorHint.foreground": "#A9B9B0",
+
+        "editorGutter.modifiedBackground": "#cecece",
+        "editorGutter.addedBackground": "#00F3C9",
+        "editorGutter.deletedBackground": "#F3002B",
+
+        "diffEditor.insertedTextBackground": "#00A78A40",
+        "diffEditor.removedTextBackground": "#A7001D40",
+
+        "editorWidget.background": "#292928",
+        "editorWidget.border": "#3D3D3C",
+        "editorSuggestWidget.foreground": "#D0D0D0",
+        "editorSuggestWidget.border": "#292928",
+        "editorSuggestWidget.highlightForeground": "#F8F8F2",
+        "editorSuggestWidget.selectedBackground": "#3D3D3C",
+        "editorHoverWidget.background": "#333332",
+        "editorHoverWidget.border": "#333332",
+
+        "debugExceptionWidget.background": "#F3002B",
+        "debugExceptionWidget.border": "#F3002B",
+
+        "editorMarkerNavigation.background": "#1F1F1E",
+        "editorMarkerNavigationError.background": "#F3002B",
+        "editorMarkerNavigationWarning.background": "#cecece",
+
+        "peekView.border": "#00A4F3",
+        "peekViewEditor.background": "#0B0B0B",
+        "peekViewEditor.matchHighlightBackground": "#DA0093",
+        "peekViewResult.background": "#292928",
+        "peekViewResult.fileForeground": "#F8F8F2",
+        "peekViewResult.lineForeground": "#D0D0D0",
+        "peekViewResult.matchHighlightBackground": "#8E005F",
+        "peekViewResult.selectionBackground": "#0B0B0B",
+        "peekViewResult.selectionForeground": "#F8F8F2",
+        "peekViewTitle.background": "#00A4F3",
+        "peekViewTitleDescription.foreground": "#FFFFFF",
+        "peekViewTitleLabel.foreground": "#FFFFFF",
+
+        "merge.currentHeaderBackground": "#007460",
+        "merge.currentContentBackground": "#0074604D",
+        "merge.incomingHeaderBackground": "#0070A7",
+        "merge.incomingContentBackground": "#0070A74D",
+        "editorOverviewRuler.currentContentForeground": "#00F3C9",
+        "editorOverviewRuler.incomingContentForeground": "#00A4F3",
+
+        "panel.background": "#080808",
+        "panel.border": "#3D3D3C",
+        "panelTitle.activeBorder": "#00A4F3",
+        "panelTitle.activeForeground": "#FFFFFF",
+        "panelTitle.inactiveForeground": "#8C8C8A",
+
+
+
+
+        "statusBar.foreground": "#878787",
+        "statusBar.background": "#080808",
+        "statusBar.debuggingForeground": "#F8F8F2",
+        "statusBar.debuggingBackground": "#F34F00",
+        "statusBar.noFolderForeground": "#878787",
+        "statusBar.noFolderBackground": "#080808",
+        "statusBarItem.hoverBackground": "#0B0B0B",
+        "statusBarItem.activeBackground": "#000000",
+
+        "titleBar.activeBackground": "#080808",
+        "titleBar.activeForeground": "#878787",
+        "titleBar.inactiveBackground": "#080808",
+        "titleBar.inactiveForeground": "#878787",
+
+        "notificationCenterHeader.foreground": "#B2B2B1",
+        "notificationCenterHeader.background": "#3D3D3C",
+        "notifications.foreground": "#F8F8F2",
+        "notifications.background": "#292928",
+        "notifications.border": "#3D3D3C",
+        "notificationLink.foreground": "#00A4F3",
+
+        "notification.background": "#3D3D3C",
+        "notification.foreground": "#F8F8F2",
+        "notification.buttonForeground": "#FFFFFF",
+        "notification.buttonBackground": "#00A4F3",
+        "notification.buttonHoverBackground": "#0093DA",
+        "notification.infoBackground": "#00F3C9",
+        "notification.infoForeground": "#007460",
+        "notification.warningBackground": "#cecece",
+        "notification.warningForeground": "#746000",
+        "notification.errorBackground": "#F3002B",
+        "notification.errorForeground": "#42000C",
+
+        "extensionButton.prominentForeground": "#FFFFFF",
+        "extensionButton.prominentBackground": "#00A4F3",
+        "extensionButton.prominentHoverBackground": "#0093DA",
+
+
+
+        "pickerGroup.border": "#cecece",
+        "pickerGroup.foreground": "#cecece",
+
+        "debugToolBar.background": "#3D3D3C",
+
+        "welcomePage.buttonBackground": "#292928",
+        "welcomePage.buttonHoverBackground": "#0B0B0B",
+        "walkThrough.embeddedEditorBackground": "#0B0B0B",
+
+        "gitDecoration.modifiedResourceForeground": "#cecece",
+        "gitDecoration.deletedResourceForeground": "#F3002B",
+        "gitDecoration.untrackedResourceForeground": "#00F3C9",
+        "gitDecoration.ignoredResourceForeground": "#8C8C8A",
+        "gitDecoration.conflictingResourceForeground": "#FF41C1",
+
+        "breadcrumb.foreground": "#6D6D6D",
+        "breadcrumb.focusForeground": "#8C8C8A",
+        "breadcrumb.activeSelectionForeground": "#D0D0D0",
+        "breadcrumbPicker.background": "#292928",
+
+        "menu.background": "#0c0c0c",
+        "menu.foreground": "#8C8C8A",
+        "menu.selectionBackground": "#212121",
+        "menu.selectionForeground": "#cecece",
+        "menubar.selectionBackground": "#212121",
+        "menubar.selectionForeground": "#cecece",
+
+
+        // As of Feb-2025, vscode does not allow the specification of which brackets are colorized 
+		// inside a theme file. '>' and '<' therefore use bracket colors. Edit your global settings 
+		// (within a nim-language section).
+
+		// Bracket colors by nesting level
+		"editorBracketHighlight.foreground1": "#EFEF8F",
+		"editorBracketHighlight.foreground2": "#BFEF9F",
+		"editorBracketHighlight.foreground3": "#EFCFAF",
+		"editorBracketHighlight.foreground4": "#EFEF8F",
+		"editorBracketHighlight.foreground5": "#BFEF9F",
+		"editorBracketHighlight.foreground6": "#EFCFAF",
+		"editorBracketHighlight.unexpectedBracket.foreground": "#EF5F5F",
+		
+		// Active indent guide colors
+		"editorIndentGuide.activeBackground1": "#0f0f4f",
+		"editorIndentGuide.activeBackground2": "#003f3f",
+		"editorIndentGuide.activeBackground3": "#004f00",
+		"editorIndentGuide.activeBackground4": "#3f3f00",
+		"editorIndentGuide.activeBackground5": "#500000",
+		"editorIndentGuide.activeBackground6": "#3f003f",
+
+		// Inactive indent guide colors
+		"editorIndentGuide.background1": "#2f2f2f",
+		"editorIndentGuide.background2": "#2f2f2f",
+		"editorIndentGuide.background3": "#2f2f2f",
+		"editorIndentGuide.background4": "#2f2f2f",
+		"editorIndentGuide.background5": "#2f2f2f",
+		"editorIndentGuide.background6": "#2f2f2f"
+
+	}
+}
