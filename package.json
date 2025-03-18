@@ -2,7 +2,7 @@
     "name": "nimlang",
     "displayName": "nim-lang.org",
     "description": "Nim extension maintained by the Nim compiler team.",
-    "version": "1.4.1",
+    "version": "1.6.0",
     "publisher": "NimLang",
     "author": {
         "name": "NimLang"
@@ -449,6 +449,16 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Automatically run nimble setup when a .nimble file is detected in the current directory."
+                },
+                "nim.maxNimsuggestProcesses":{
+                    "type": "number",
+                    "default": 0,
+                    "description": "The maximum number of nimsuggest processes to keep alive in the lsp. 0 means unlimited."
+                },
+                "nim.nimsuggestIdleTimeout":{
+                    "type": "number",
+                    "default": 120000,
+                    "description": "The timeout in ms after which an idle nimsuggest will be stopped. If not specified the default is 120 seconds."
                 }
             }
         },

@@ -1,7 +1,7 @@
 import std/strformat
 # Package
 
-version = "1.4.1"
+version = "1.6.0"
 author = "saem"
 description = "Nim language support for Visual Studio Code written in Nim"
 license = "MIT"

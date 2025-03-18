@@ -12,3 +12,4 @@ vscodeNim/**
 .gitignore
 tsconfig.json
 tslint.json
+nimbledeps/**
