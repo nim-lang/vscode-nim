@@ -296,6 +296,23 @@
       },
       "patterns": [
         {
+          "begin": "\\b([[:alpha:]]\\w*)\\(",
+          "beginCaptures": {
+            "1": {
+              "name": "meta.preprocessor.pragma.nim"
+            }
+          },
+          "end": "\\)",
+          "patterns": [
+            {
+              "include": "#string_literal"
+            },
+            {
+              "include": "source.nim"
+            }
+          ]
+        },
+        {
           "begin": "\\b([[:alpha:]]\\w*)(?:\\s|\\s*:)",
           "beginCaptures": {
             "1": {
@@ -305,19 +322,22 @@
           "end": "(?=\\.?\\}|,)",
           "patterns": [
             {
-              "include": "source.nim"
-            }
-          ]
-        },
-        {
-          "begin": "\\b([[:alpha:]]\\w*)\\(",
-          "beginCaptures": {
-            "1": {
-              "name": "meta.preprocessor.pragma.nim"
-            }
-          },
-          "end": "\\)",
-          "patterns": [
+              "begin": "\\b([[:alpha:]]\\w*)\\s*\\(",
+              "beginCaptures": {
+                "1": {
+                  "name": "support.function.any-method.nim"
+                }
+              },
+              "end": "\\)",
+              "patterns": [
+                {
+                  "include": "#string_literal"
+                },
+                {
+                  "include": "source.nim"
+                }
+              ]
+            },
             {
               "include": "source.nim"
             }
@@ -1046,6 +1066,24 @@
           ]
         }
       ]
+    },
+    {
+      "begin": "\\b(\\w+)\\s*\\(",
+      "beginCaptures": {
+        "1": {
+          "name": "support.function.any-method.nim"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#string_literal"
+        },
+        {
+          "include": "source.nim"
+        }
+      ],
+      "end": "\\)",
+      "name": "meta.function-call.nim"
     }
   ],
   "repository": {
