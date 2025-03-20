@@ -13,3 +13,5 @@ vscodeNim/**
 tsconfig.json
 tslint.json
 nimbledeps/**
+out/*.map
+out/nimvscode-*
