@@ -1,4 +1,5 @@
 import std/asyncjs except PromiseJs
+import std/sugar
 export asyncjs
 
 # Promise Wrapping -- TODO separate out
@@ -32,6 +33,24 @@ proc promiseReject*[T](
 proc promiseResolve*[T](
   val: T
 ): Future[T] {.importcpp: "Promise.resolve(#)", discardable.}
+
+proc flatMap*[T, U](fut: Future[T], fn: proc(t:T) : Future[U] ) : Future[U] {.async.}=
+    let val = await fut
+    return fn(val) #JS? I should use the above there but not sure if the API will be available. Should I make them?
+ 
+proc resolve[T](val:T) : Future[T] {.importjs: "Promise.resolve(#)".}
+
+proc resolveAll[T, Y](fut1:Future[T], fut2:Future[Y]) : Future[tuple[val1:T, val2:Y]] {.importjs: "Promise.All(@)".}
+
+proc createFuture*[T](val:T): Future[T] = resolve(val)
+
+proc createFuture*[T](fn: ()->T): Future[T] = createFuture(fn())
+
+proc merge*[T, Y, U](fut1: Future[T], fut2: Future[Y], fn: proc (t:T, y:Y): U {.gcsafe.}) : Future[U] {.async.} =
+  let val1 = await fut1
+  let val2 = await fut2
+  return fn(val1, val2)
+
 
 {.push importcpp, discardable.}
 proc then*[T](p: Future[T], onFulfilled: proc()): Future[T]
