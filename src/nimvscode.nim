@@ -6,12 +6,12 @@ when not defined(js):
 import platform/vscodeApi
 import platform/js/[jsre, jsString, jsNodeFs, jsNodePath, jsNodeCp]
 import tools/nimBinTools
-import std/[strformat, jsconsole, strutils, options, sugar]
+import std/[strformat, jsconsole, strutils, options, sugar, json]
 from std/os import `/`
 import spec
 import
   nimRename, nimSuggest, nimDeclaration, nimReferences, nimOutline, nimSignature,
-  nimHover, nimFormatting, nimLspStatusPanel
+  nimHover, nimFormatting, nimLspStatusPanel, nimStatus
 
 from nimBuild import check, execSelectionInTerminal, activateEvalConsole, CheckResult
 from nimStatus import showHideStatus
@@ -412,6 +412,77 @@ proc showNimbleSetupDialog() =
       outputLine("nimble setup failed")
   execNimbleCmd(@["setup".cstring], dirPath, onClose)
 
+proc getNimCacheDir(): Future[Option[cstring]] {.async.} = 
+  let editor = vscode.window.activeTextEditor
+  if editor.isNil():
+    return none(cstring)
+    
+  let currentFile = editor.document.fileName
+  let cmd = state.getNimCmd()
+  let args = @["dump".cstring, "--dump.format:json".cstring, currentFile]
+  let process = cp.spawn(cmd, args, SpawnOptions(shell: true))
+  var fullData = ""
+
+  newPromise(
+    proc(resolve: proc(response: Option[cstring]), reject: proc(reasons: Option[cstring])) =
+      process.stdout.onData(proc(data: Buffer) =
+        fullData.add($data.toString())
+      )
+  
+      process.onClose(proc(code: cint, signal: cstring) =
+        try:      
+          let json = parseJson(fullData)
+          let nimcache = json["nimcache"].getStr().cstring
+          resolve(some(nimcache))
+        except CatchableError:
+          console.error("Error: " & getCurrentExceptionMsg().cstring)
+          reject(none(cstring))
+      )
+
+      process.onError(proc(error: ChildError): void =
+        console.error(error)
+        reject(none(cstring))
+      )
+    
+  )
+
+
+proc getGeneratedFile(): Future[Option[cstring]] {.async.} = 
+  let nimCacheDir = await getNimCacheDir()
+  if nimCacheDir.isNone():
+    return none(cstring)
+  let nimcache = nimCacheDir.get()
+  #checks forlder exists
+  if not fs.existsSync(nimcache):
+    return none(cstring)
+  let currentFile = vscode.window.activeTextEditor.document.fileName
+  let currentFileName = path.basename(currentFile)
+  let files = fs.readdirSync(nimcache)
+  for file in files:
+    if currentFileName in file:
+      let fullPath = path.join(nimcache, file)
+      console.log("Generated file is " & fullPath)
+      return some(fullPath)
+  return none(cstring)
+
+
+proc openGeneratedFile() {.async.} =
+  showNimStatus("Opening generated file...", "nim.openGeneratedFile", "Opening generated file...")
+  let generatedFile = await getGeneratedFile()
+  if generatedFile.isSome():
+    let fullPath = generatedFile.get()
+    discard vscode.workspace.openTextDocument(vscode.uriFile(fullPath)).then(
+      proc(doc: VscodeTextDocument) =
+        discard vscode.window.showTextDocument(
+                  doc,
+                  VscodeTextDocumentShowOptions(
+                    viewColumn: VscodeViewColumn.active # Opens in split view
+                  )
+                )    )
+  else:
+    console.log("No generated file found. Make sure the project is built.")
+    vscode.window.showErrorMessage("No generated file found. Make sure the project is built.")
+  hideNimStatus()
 
 proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   var config = vscode.workspace.getConfiguration("nim")
@@ -448,6 +519,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   vscode.commands.registerCommand("nim.onNimbleTask", onNimbleTask)
   vscode.commands.registerCommand("nim.onRefreshNimbleTasks", refreshNimbleTasks)
   vscode.commands.registerCommand("nim.onLspSuggest", onLspSuggest)
+  vscode.commands.registerCommand("nim.openGeneratedFile", openGeneratedFile)
 
   processConfig(config)
   discard vscode.workspace.onDidChangeConfiguration(configUpdate)
@@ -653,7 +725,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
       # provideNimbleTasksDecorations(ctx, vscode.window.activeTextEditor.document)
   )
   ctx.subscriptions.add(nimbleWatcher)
- 
+
 
 proc deactivate*(): void {.async.} =
   let provider = nimUtils.ext.config.getStr("provider")

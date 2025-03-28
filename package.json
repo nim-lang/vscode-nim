@@ -187,6 +187,12 @@
                 "command": "nim.restartNimsuggest",
                 "title": "Restarts nimsuggest",
                 "category": "Nim"
+            },
+            {
+                "command": "nim.openGeneratedFile",
+                "title": "Open Generated File",
+                "category": "Nim",
+                "icon": "$(go-to-file)"
             }
         ],
         "menus": {
@@ -200,6 +206,11 @@
                     "when": "editorLangId == 'nim'",
                     "command": "nim.debug.file",
                     "group": "run@2"
+                },
+                {
+                    "when": "editorLangId == 'nim'",
+                    "command": "nim.openGeneratedFile",
+                    "group": "run@3"
                 }
             ],
             "editor/title/run": [
@@ -212,6 +223,11 @@
                     "command": "nim.debug.file",
                     "when": "editorLangId == 'nim'",
                     "group": "run@2"
+                },
+                {
+                    "command": "nim.openGeneratedFile",
+                    "when": "editorLangId == 'nim' && nim:generatedFileExists",
+                    "group": "run@3"
                 }
             ]
         },

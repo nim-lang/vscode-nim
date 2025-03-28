@@ -537,6 +537,13 @@ type
     languages*: VscodeLanguages
     debug*: VSCodeDebug
 
+  VscodeTextEditorOptions* = ref object of JsObject
+    viewColumn*: VscodeViewColumn
+    preserveFocus*: bool
+    preview*: bool
+    selection*: VscodeRange
+    isPreview*: bool
+
   VscodeViewColumn* {.size: sizeof(int32).} = enum
     beside = -2
     active = -1
@@ -604,14 +611,6 @@ type
     preview*: bool
     selection*: VscodeRange
     isPreview*: bool
-
-  VscodeDocumentOptions* = ref object
-    content*: cstring
-    language*: cstring
-    scheme*: cstring  
-    uri*: VscodeUri
-
-
  
 proc then*(
   self: VscodeThenable,
@@ -1144,7 +1143,7 @@ proc createTextDocument*(
 
 proc createTextDocument*(
   workspace: VscodeWorkspace,
-  options: VscodeDocumentOptions
+  options: VscodeTextDocumentShowOptions
 ): Future[VscodeTextDocument] {.importcpp: "#.openTextDocument(#)".}
 
 proc openTextDocument*(
