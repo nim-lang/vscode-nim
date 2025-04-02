@@ -23,6 +23,7 @@ from nimUtils import ext, getDirtyFile, outputLine
 from nimProjects import processConfig, configUpdate
 from nimMode import mode
 import nimLsp, nimcodelenses
+import nimtest
 
 var state: ExtensionState
 var diagnosticCollection {.threadvar.}: VscodeDiagnosticCollection
@@ -726,6 +727,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   )
   ctx.subscriptions.add(nimbleWatcher)
 
+  # initializeTests(ctx)
 
 proc deactivate*(): void {.async.} =
   let provider = nimUtils.ext.config.getStr("provider")
