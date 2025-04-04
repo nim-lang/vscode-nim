@@ -528,6 +528,8 @@ type
     ## A unique identifier for the current session.
     sessionId*: cstring
 
+  VscodeTests* = ref object of JsObject
+
   Vscode* = ref VscodeObj
   VscodeObj {.importc.} = object of JsRoot
     env*: VscodeEnv
@@ -535,7 +537,8 @@ type
     commands*: VscodeCommands
     workspace*: VscodeWorkspace
     languages*: VscodeLanguages
-    debug*: VSCodeDebug
+    debug*: VscodeDebug
+    tests*: VscodeTests
 
   VscodeTextEditorOptions* = ref object of JsObject
     viewColumn*: VscodeViewColumn
@@ -1152,3 +1155,93 @@ proc openTextDocument*(
 ): Future[VscodeTextDocument] {.importcpp: "#.openTextDocument(#)".}
 
 proc asAbsolutePath*(ctx: VscodeExtensionContext, relativePath: cstring): cstring {.importjs: "#.asAbsolutePath(#)".}
+
+# Add these type definitions
+
+type
+  VscodeTestItem* = ref object of JsObject
+    id*: cstring
+    label*: cstring
+    uri*: VscodeUri
+    range*: VscodeRange
+    children*: VscodeTestItemCollection
+  
+  VscodeTestRunRequest* = ref object of JsObject
+    `include`*: seq[VscodeTestItem]
+    exclude*: seq[VscodeTestItem]
+    profile*: VscodeTestRunProfile
+    continuous*: bool
+    debug*: bool
+
+  VscodeTestItemCollection* = ref object of JsObject
+  VscodeTestController* = ref object of JsObject
+    items*: VscodeTestItemCollection
+    createRunProfile*: proc(
+      label: cstring,
+      kind: VscodeTestRunProfileKind,
+      runHandler: proc(request: VscodeTestRunRequest, token: VscodeCancellationToken),
+      isDefault: bool = false
+    ): VscodeTestRunProfile
+
+  VscodeTestRunProfile* = ref object of JsObject
+    kind*: VscodeTestRunProfileKind
+    label*: cstring
+
+  VscodeTestMessage* = ref object of JsObject
+    message*: cstring
+
+  VscodeTestRun* = ref object of JsObject
+
+  VscodeTestRunProfileKind* {.pure.} = enum
+    Run = 1
+    Debug = 2
+    Coverage = 3
+
+# Add these methods for TestController
+proc createTestRun*(controller: VscodeTestController): VscodeTestRun {.importcpp.}
+proc createTestItem*(
+  controller: VscodeTestController, 
+  id: cstring, 
+  label: cstring, 
+  uri: VscodeUri = nil
+): VscodeTestItem {.importcpp.}
+
+proc createRunProfile*(
+  controller: VscodeTestController,
+  label: cstring,
+  kind: VscodeTestRunProfileKind,
+  runHandler: proc(request: JsObject, token: VscodeCancellationToken),
+  isDefault: bool = false
+): VscodeTestRunProfile {.importcpp: "#.createTestRunProfile(@)".}
+
+# Add method to get items collection
+proc getItems*(controller: VscodeTestController): VscodeTestItemCollection {.importcpp: "#.items".}
+
+# Add methods for TestItemCollection
+proc add*(collection: VscodeTestItemCollection, item: VscodeTestItem) {.importcpp: "#.add(#)".}
+proc delete*(collection: VscodeTestItemCollection, item: VscodeTestItem) {.importcpp: "#.delete(#)".}
+proc forEach*(collection: VscodeTestItemCollection, callback: proc(item: VscodeTestItem)) {.importcpp: "#.forEach(#)".}
+proc size*(collection: VscodeTestItemCollection): cint {.importcpp: "#.size".}
+
+# Test item methods
+proc getChildren*(item: VscodeTestItem): Array[VscodeTestItem] {.importcpp: "#.children".}
+proc getId*(item: VscodeTestItem): cstring {.importcpp: "#.id".}
+proc getLabel*(item: VscodeTestItem): cstring {.importcpp: "#.label".}
+proc getUri*(item: VscodeTestItem): VscodeUri {.importcpp: "#.uri".}
+proc getRange*(item: VscodeTestItem): VscodeRange {.importcpp: "#.range".}
+
+# Test controller methods
+proc enqueued*(run: VscodeTestRun, test: VscodeTestItem) {.importcpp: "#.enqueued(@)".}
+proc passed*(run: VscodeTestRun, test: VscodeTestItem) {.importcpp: "#.passed(@)".}
+proc failed*(run: VscodeTestRun, test: VscodeTestItem, message: VscodeTestMessage) {.importcpp: "#.failed(@)".}
+proc skipped*(run: VscodeTestRun, test: VscodeTestItem) {.importcpp: "#.skipped(@)".}
+proc started*(run: VscodeTestRun, test: VscodeTestItem) {.importcpp: "#.started(@)".}
+proc ended*(run: VscodeTestRun, test: VscodeTestItem = nil) {.importcpp: "#.end(@)".}
+
+# Add the creation function
+proc createTestController*(
+  tests: VscodeTests,
+  id: cstring,
+  label: cstring
+): VscodeTestController {.importcpp: "#.createTestController(@)".}
+
