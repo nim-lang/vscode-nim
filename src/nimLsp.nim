@@ -220,7 +220,15 @@ proc refreshLspStatus*(
   self.emitter.fire(nil)
   # console.log(lspStatus.projectErrors)
   ext.addExtensionCapabilities(lspStatus.extensionCapabilities)
+  ext.onExtensionReady()
 
+
+proc fetchListTests*(state: ExtensionState, params: ListTestsParams): Future[ListTestsResult] {.async.} =
+  let client = state.client
+  let response = await client.sendRequest("extension/listTests", params.toJs())
+  console.log(response.jsonStringify())
+  let test = response.jsonStringify().jsonParse(ListTestsResult)
+  return test
 
 proc startClientSocket(portFut: Future[int]): proc(): Future[ServerOptions] {.async.} =
   return proc(): auto {.async.} =
