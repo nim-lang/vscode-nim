@@ -727,7 +727,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   )
   ctx.subscriptions.add(nimbleWatcher)
 
-  # initializeTests(ctx)
+  initializeTests(ctx, nimUtils.ext)
 
 proc deactivate*(): void {.async.} =
   let provider = nimUtils.ext.config.getStr("provider")

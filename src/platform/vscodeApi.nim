@@ -862,6 +862,10 @@ proc getStr*(
   c: VscodeWorkspaceConfiguration, section: cstring
 ): cstring {.importcpp: "#.get(@)".}
 
+proc getStrArray*(
+  c: VscodeWorkspaceConfiguration, section: cstring
+): Array[cstring] {.importcpp: "#.get(@)".}
+
 proc getStrBoolMap*(
   c: VscodeWorkspaceConfiguration,
   section: cstring,
@@ -1244,4 +1248,3 @@ proc createTestController*(
   id: cstring,
   label: cstring
 ): VscodeTestController {.importcpp: "#.createTestController(@)".}
-

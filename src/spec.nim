@@ -72,11 +72,50 @@ type
     command*: seq[cstring] #command and args
     output*: seq[cstring] #output lines
 
+  TestInfo* = object
+    name*: cstring
+    line*: int
+    file*: cstring
+  
+  TestSuiteInfo* = object
+    name*: cstring #The suite name, empty if it's a global test
+    tests*: seq[TestInfo]
+
+  TestProjectInfo* = object
+    entryPoints*: seq[cstring]
+    suites*: JsAssoc[cstring, TestSuiteInfo]
+
+  ListTestsParams* = object
+    entryPoints*: seq[cstring] #can be patterns? if empty we could do the same as nimble does or just run `nimble test args`
+
+  ListTestsResult* = object
+    projectInfo*: TestProjectInfo
+  
+  RunTestResult* = object
+    name*: cstring
+    time*: float
+
+  RunTestSuiteResult* = object
+    name*: cstring
+    tests*: int
+    failures*: int
+    errors*: int
+    skipped*: int
+    time*: float
+    testResults*: seq[RunTestResult]
+  
+  RunTestParams* = object
+    entryPoints*: seq[cstring]
+
+  RunTestProjectResult* = object
+    suites*: seq[RunTestSuiteResult]
+
   LspExtensionCapability* = enum #List of extensions the lsp server support.
     excNone = "None"
     excRestartSuggest = "RestartSuggest"
     excNimbleTask = "NimbleTask"
-        
+    excRunTests = "RunTests"
+    
   ExtensionState* = ref object
     ctx*: VscodeExtensionContext
     config*: VscodeWorkspaceConfiguration
@@ -91,6 +130,8 @@ type
     lspExtensionCapabilities*: set[LspExtensionCapability]
     nimbleTasks*: seq[NimbleTask]
     propagatedDecorations*: Table[cstring, seq[VscodeTextEditorDecorationType]]
+    extensionReady*: bool
+    onExtensionReadyHooks*: seq[proc()] #Called when the extension has stablished the connection with the lsp server and is initialized
     
    
 
@@ -158,6 +199,13 @@ proc addExtensionCapabilities*(state: ExtensionState, caps: seq[cstring]) =
     except ValueError:
       console.error(("Error parsing server extension capability " & cap))
   # outputLine(fmt" Lsp Server Extension Capabilities: {state.lspExtensionCapabilities}".cstring)
+
+proc onExtensionReady*(state: ExtensionState) =
+  if state.extensionReady:
+    return
+  state.extensionReady = true
+  for hook in state.onExtensionReadyHooks:
+    hook()
 
 proc fetchLsp*[T, U](
     state: ExtensionState, name: string, params: U

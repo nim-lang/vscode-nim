@@ -1,5 +1,6 @@
 import platform/vscodeApi
-import std/[strformat, jsconsole]
+import std/[strformat, jsconsole, tables]
+import spec, nimLsp
 
 var testController: VscodeTestController
 
@@ -62,53 +63,77 @@ proc runHandler(request: VscodeTestRunRequest, token: VscodeCancellationToken) =
       run.`end`()
     , 3000)
 
-proc initializeTests*(context: VscodeExtensionContext) =
-  console.log("Creating test controller...")
-  testController = vscode.tests.createTestController("nim-tests".cstring, "Nim Tests".cstring)
-  
-  # Add a dummy test item to verify everything works
-  let dummyTest = testController.createTestItem(
-    "test1".cstring,
-    "Sample Test".cstring
-  )
-  
-  # Use the add method instead of push
-  testController.getItems().add(dummyTest)
 
-  let dummyFailingTest = testController.createTestItem(
-    "test2".cstring,
-    "Failing Test".cstring
-  )
+proc initializeTests*(context: VscodeExtensionContext, state: ExtensionState) =
+  proc onExtensionReady()  =
+    proc inner() {.async.} = 
+      if excRunTests notin state.lspExtensionCapabilities:
+        console.log("Run tests capability not found")
+        return
+      #Only one for now
+      var entryPoint = state.config.getStrArray("test.entryPoints")[0]
+      console.log("Entry point: ", entryPoint)
+      let listTestsParams = ListTestsParams(entryPoints: @[entryPoint])
+      let listTestsRes = await fetchListTests(state, listTestsParams)
+      testController = vscode.tests.createTestController("nim-tests".cstring, "Nim Tests".cstring)
 
-  testController.getItems().add(dummyFailingTest)
-  
-  console.log("Created dummy test item")
-  
-  # Create a run profile that will show up in the test explorer
-  discard testController.createRunProfile(
-    "Run Tests",
-    VscodeTestRunProfileKind.Run,
-    runHandler,
-    true
-  )
-  
-  console.log("Test initialization complete")
+      console.log("List tests result: ", listTestsRes)
+      for key, suite in listTestsRes.projectInfo.suites:
+        let suiteItem = testController.createTestItem(suite.name, suite.name)
+        for test in suite.tests:
+          let testItem = testController.createTestItem(test.name, test.name)
+          suiteItem.children.add(testItem)
+        testController.getItems().add(suiteItem)
 
-  let suite = testController.createTestItem(
-    "suite1".cstring,
-    "My Test Suite".cstring
-  )
+      # console.log("Creating test controller...")
+      
+      
+      # # Add a dummy test item to verify everything works
+      # let dummyTest = testController.createTestItem(
+      #   "test1".cstring,
+      #   "Sample Test".cstring
+      # )
+      
+      # # Use the add method instead of push
+      # testController.getItems().add(dummyTest)
 
-  let testInSuite = testController.createTestItem(
-    "test-in-suite1".cstring,
-    "Test In Suite".cstring
-  )
-  let testInSuite2 = testController.createTestItem(
-    "test-in-suite2".cstring,
-    "Test In Suite 2".cstring
-  )
+      # let dummyFailingTest = testController.createTestItem(
+      #   "test2".cstring,
+      #   "Failing Test".cstring
+      # )
 
-  suite.children.add(testInSuite)
-  suite.children.add(testInSuite2)
+      # testController.getItems().add(dummyFailingTest)
+      
+      # console.log("Created dummy test item")
+      
+      # # Create a run profile that will show up in the test explorer
+      # discard testController.createRunProfile(
+      #   "Run Tests",
+      #   VscodeTestRunProfileKind.Run,
+      #   runHandler,
+      #   true
+      # )
+      
+      # console.log("Test initialization complete")
 
-  testController.getItems().add(suite)
+      # let suite = testController.createTestItem(
+      #   "suite1".cstring,
+      #   "My Test Suite".cstring
+      # )
+
+      # let testInSuite = testController.createTestItem(
+      #   "test-in-suite1".cstring,
+      #   "Test In Suite".cstring
+      # )
+      # let testInSuite2 = testController.createTestItem(
+      #   "test-in-suite2".cstring,
+      #   "Test In Suite 2".cstring
+      # )
+
+      # suite.children.add(testInSuite)
+      # suite.children.add(testInSuite2)
+
+      # testController.getItems().add(suite)
+    discard inner()
+
+  state.onExtensionReadyHooks.add(onExtensionReady)
