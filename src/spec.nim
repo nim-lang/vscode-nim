@@ -94,6 +94,7 @@ type
   RunTestResult* = object
     name*: cstring
     time*: float
+    failure*: cstring
 
   RunTestSuiteResult* = object
     name*: cstring
@@ -106,7 +107,9 @@ type
   
   RunTestParams* = object
     entryPoints*: seq[cstring]
-
+    suiteName*: cstring #Optional, if provided, only run tests in the suite
+    testNames*: seq[cstring] #Optional, if provided, only run the specific tests
+    
   RunTestProjectResult* = object
     suites*: seq[RunTestSuiteResult]
 

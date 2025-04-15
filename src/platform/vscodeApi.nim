@@ -1193,6 +1193,9 @@ type
 
   VscodeTestMessage* = ref object of JsObject
     message*: cstring
+    expectedOutput*: cstring
+    actualOutput*: cstring
+    location*: VscodeLocation
 
   VscodeTestRun* = ref object of JsObject
 
@@ -1201,8 +1204,7 @@ type
     Debug = 2
     Coverage = 3
 
-# Add these methods for TestController
-proc createTestRun*(controller: VscodeTestController): VscodeTestRun {.importcpp.}
+proc createTestRun*(controller: VscodeTestController, request: VscodeTestRunRequest): VscodeTestRun {.importcpp: "#.createTestRun(#)".}
 proc createTestItem*(
   controller: VscodeTestController, 
   id: cstring, 
@@ -1236,8 +1238,8 @@ proc getRange*(item: VscodeTestItem): VscodeRange {.importcpp: "#.range".}
 
 # Test controller methods
 proc enqueued*(run: VscodeTestRun, test: VscodeTestItem) {.importcpp: "#.enqueued(@)".}
-proc passed*(run: VscodeTestRun, test: VscodeTestItem) {.importcpp: "#.passed(@)".}
-proc failed*(run: VscodeTestRun, test: VscodeTestItem, message: VscodeTestMessage) {.importcpp: "#.failed(@)".}
+proc passed*(run: VscodeTestRun, test: VscodeTestItem, message: VscodeTestMessage = nil, duration: float = 0) {.importcpp: "#.passed(@)".}
+proc failed*(run: VscodeTestRun, test: VscodeTestItem, message: VscodeTestMessage = nil, duration: float = 0) {.importcpp: "#.failed(@)".}
 proc skipped*(run: VscodeTestRun, test: VscodeTestItem) {.importcpp: "#.skipped(@)".}
 proc started*(run: VscodeTestRun, test: VscodeTestItem) {.importcpp: "#.started(@)".}
 proc ended*(run: VscodeTestRun, test: VscodeTestItem = nil) {.importcpp: "#.end(@)".}

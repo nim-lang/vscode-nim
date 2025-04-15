@@ -230,6 +230,13 @@ proc fetchListTests*(state: ExtensionState, params: ListTestsParams): Future[Lis
   let test = response.jsonStringify().jsonParse(ListTestsResult)
   return test
 
+proc requestRunTest*(state: ExtensionState, params: RunTestParams): Future[RunTestProjectResult] {.async.} =
+  let client = state.client
+  let response = await client.sendRequest("extension/runTests", params.toJs())
+  console.log(response.jsonStringify())
+  let test = response.jsonStringify().jsonParse(RunTestProjectResult)
+  return test
+
 proc startClientSocket(portFut: Future[int]): proc(): Future[ServerOptions] {.async.} =
   return proc(): auto {.async.} =
     let port = await portFut
