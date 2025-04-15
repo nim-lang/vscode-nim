@@ -19,6 +19,9 @@ run.end() - Complete the test run
 
 #Basically in nim you will be able to run all tests a suite, or a single test
 
+proc isSuite(test: VscodeTestItem): bool =
+  return test.children.size() > 0
+
 proc renderTestResult(test: VscodeTestItem, result: RunTestResult, run: VscodeTestRun) =
   console.log("Rendering test result: ", result)
   let duration = result.time * 1000
@@ -32,71 +35,82 @@ proc renderTestResult(test: VscodeTestItem, result: RunTestResult, run: VscodeTe
     run.appendOutput(result.failure)
     run.appendOutput(&"[{test.label}] Test failed in {duration:.4f}ms\n")
 
+
+proc renderTestProjectResult(projectResult: RunTestProjectResult, run: VscodeTestRun, testCol: Option[VscodeTestItemCollection]) =
+  for suite in projectResult.suites:
+    for testResult in suite.testResults:
+      if testCol.isSome:
+        # Find the child test item that matches this result
+        testCol.get.forEach(proc(childTest: VscodeTestItem) =
+          if childTest.id == testResult.name:
+            renderTestResult(childTest, testResult, run)
+          childTest.children.forEach(proc(childChildTest: VscodeTestItem) =
+            if childChildTest.id == testResult.name:
+              renderTestResult(childChildTest, testResult, run)
+          )
+          )
+
 proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun) = 
   let state = ext
-  let entryPoint = state.config.getStrArray("test.entryPoints")[0]
-      
+  let entryPoint = state.config.getStrArray("test.entryPoints")[0]  
   run.started(test)
   console.log("Running test: ", test.id)
-  let runTestParams = RunTestParams(testNames: @[test.id], entryPoints: @[entryPoint])
+  var runTestParams = RunTestParams(entryPoints: @[entryPoint])
+  if test.isSuite:
+    runTestParams.suiteName = test.id
+  else:
+    runTestParams.testNames = @[test.id]
+
+  let runTestRes = requestRunTest(state, runTestParams)
+  runTestRes.then(proc(res: RunTestProjectResult) =
+    if test.isSuite:
+      renderTestProjectResult(res, run, some test.children)
+    else:
+      renderTestResult(test, res.suites[0].testResults[0], run)
+    run.`end`()
+  )
+  runTestRes.catch(proc(err: ref Exception) =
+    console.log("Run test error: ", err)
+    run.failed(test, VscodeTestMessage(message: err.msg), duration = 0)
+    run.`end`()
+  )
+
+proc runAllTests(request: VscodeTestRunRequest) =
+  let run: VscodeTestRun = testController.createTestRun(request)
+  let state = ext
+  let entryPoint = state.config.getStrArray("test.entryPoints")[0]  
+  testController.getItems().forEach(proc(item: VscodeTestItem) =
+    run.started(item)
+    item.children.forEach(proc(child: VscodeTestItem) =
+      run.started(child)
+    )
+  )
+  var runTestParams = RunTestParams(entryPoints: @[entryPoint])
   let runTestRes = requestRunTest(state, runTestParams)
   runTestRes.then(proc(res: RunTestProjectResult) =
     console.log("Run test result: ", res)
-    renderTestResult(test, res.suites[0].testResults[0], run)
+    renderTestProjectResult(res, run, some testController.getItems())
     run.`end`()
   )
-  # runTestRes.catch(proc(err: ref Exception) =
-  #   console.log("Run test error: ", err)
-  #   run.failed(test, VscodeTestMessage(message: err.msg), duration = 0)
-  #   run.`end`()
-  # )
-  
-  
-
-
-# proc runSingleTest(test: VscodeTestItem) =
-#   let run = testController.createTestRun(test)
-#   run.started(test)
-#   console.log("Running test: ", test.id)
-  
-#   if test.children.size() == 0:
-#     run.appendOutput(&"\n[{test.label}] Starting test...\n")
+  runTestRes.catch(proc(err: ref Exception) =
+    console.log("Run test error: ", err)
+    testController.getItems().forEach(proc(item: VscodeTestItem) =
+      run.failed(item, VscodeTestMessage(message: err.msg), duration = 0)
+    )
+    run.`end`())
     
-#     global.setTimeout(proc() =
-#       if test.id == "test2":
-#         run.appendOutput(&"[{test.label}] Test failed with error:\n")
-#         run.appendOutput("Expected 42 but got 41\n")
-#         run.failed(test, "Failed test".cstring)
-#       else:
-#         run.appendOutput(&"[{test.label}] Test completed successfully\n")
-#         run.appendOutput("All assertions passed\n")
-#         run.passed(test, "Passed test".cstring)
-    
-#     , 1000)
-#   else:
-#     console.log("Running suite: ", test.id)
-#     run.appendOutput(&"\n=== Running Suite: {test.label} ===\n")
-#     test.children.forEach(proc(child: VscodeTestItem) =
-#       runSingleTest(child)
-#     )
-
 proc runHandler(request: VscodeTestRunRequest, token: VscodeCancellationToken) =
   console.log("Running tests...", request)
   let isRunAll = request.include.isUndefined
   console.log("Is run all: ", isRunAll)
   if isRunAll:
-      let items = testController.getItems()
-      items.forEach(proc(item: VscodeTestItem) =
-        let run: VscodeTestRun = testController.createTestRun(request)
-        runSingleTest(item, run)
-      )
+    runAllTests(request)
   else:
     let run: VscodeTestRun = testController.createTestRun(request)
     for item in request.include:
       runSingleTest(item,run)
 
     console.log("Include array: ", request.include)
-
 
 proc initializeTests*(context: VscodeExtensionContext, state: ExtensionState) =
   proc onExtensionReady()  =
