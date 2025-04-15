@@ -1222,6 +1222,7 @@ proc createRunProfile*(
 
 # Add method to get items collection
 proc getItems*(controller: VscodeTestController): VscodeTestItemCollection {.importcpp: "#.items".}
+proc getItem*(controller: VscodeTestController, id: cstring): VscodeTestItem {.importcpp: "#.getItem(#)".}
 
 # Add methods for TestItemCollection
 proc add*(collection: VscodeTestItemCollection, item: VscodeTestItem) {.importcpp: "#.add(#)".}
