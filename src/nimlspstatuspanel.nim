@@ -79,6 +79,11 @@ proc newLspItem*(
   statusItem.notification = notification
   statusItem.pendingRequest = pendingRequest
   statusItem.projectError = projectError
+  if projectError.isSome():
+    let pe = projectError.get()
+    outputLine(fmt"Error executing command: \n {pe.lastKnownCmd}".cstring)
+    outputLine(fmt"In project: \n{pe.projectFile}".cstring)
+    outputLine(fmt"StackTrace (if none appears compile nimsuggest with --lineTrace) \n {pe.errorMessage}".cstring)
   if iconPath.isSome:
     statusItem.iconPath = iconPath.get
   cast[LspItem](statusItem)
