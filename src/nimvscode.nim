@@ -521,6 +521,8 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   vscode.commands.registerCommand("nim.onRefreshNimbleTasks", refreshNimbleTasks)
   vscode.commands.registerCommand("nim.onLspSuggest", onLspSuggest)
   vscode.commands.registerCommand("nim.openGeneratedFile", openGeneratedFile)
+  vscode.commands.registerCommand("nim.refreshTests", refreshTests)
+  
 
   processConfig(config)
   discard vscode.workspace.onDidChangeConfiguration(configUpdate)
@@ -726,7 +728,6 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
       # provideNimbleTasksDecorations(ctx, vscode.window.activeTextEditor.document)
   )
   ctx.subscriptions.add(nimbleWatcher)
-
   initializeTests(ctx, nimUtils.ext)
 
 proc deactivate*(): void {.async.} =

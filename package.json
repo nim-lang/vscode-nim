@@ -193,6 +193,11 @@
                 "title": "Open Generated File",
                 "category": "Nim",
                 "icon": "$(go-to-file)"
+            },
+            {
+                "command": "nim.refreshTests",
+                "title": "Refresh Tests",
+                "category": "Nim"
             }
         ],
         "menus": {
