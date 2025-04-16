@@ -113,90 +113,62 @@ proc runHandler(request: VscodeTestRunRequest, token: VscodeCancellationToken) =
     console.log("Include array: ", request.include)
 
 proc initializeTests*(context: VscodeExtensionContext, state: ExtensionState) =
-  proc onExtensionReady()  =
-    proc inner() {.async.} = 
-      if excRunTests notin state.lspExtensionCapabilities:
-        console.log("Run tests capability not found")
-        return      
-      #Only one for now
-      var entryPoint = state.config.getStrArray("test.entryPoints")[0]
-      
-      
-      console.log("Entry point: ", entryPoint)
-      let listTestsParams = ListTestsParams(entryPoints: @[entryPoint])
-      let listTestsRes = await fetchListTests(state, listTestsParams)
+proc loadTests(state: ExtensionState): Future[void] {.async.} =
+  if excRunTests notin state.lspExtensionCapabilities:
+    console.log("Run tests capability not found")
+    return
+    
+  let entryPoint = state.config.getStrArray("test.entryPoints")[0]
+  console.log("Entry point: ", entryPoint)
+  
+  let listTestsParams = ListTestsParams(entryPoints: @[entryPoint])
+  let listTestsRes = await fetchListTests(state, listTestsParams)
+  
+  # Clear existing items
+  testController.getItems().clear()
+  
+  if listTestsRes.projectInfo.suites.keys.toSeq.len == 0:
+    vscode.window.showInformationMessage("No tests found for entry point: " & entryPoint)
+    return
+
+  for key, suite in listTestsRes.projectInfo.suites:
+    let suiteItem = testController.createTestItem(suite.name, suite.name)
+    for test in suite.tests:
+      let testItem = testController.createTestItem(test.name, test.name)
+      suiteItem.children.add(testItem)
+    testController.getItems().add(suiteItem)
+
+
+proc refreshTests*() {.async.} =
+  if testController.isNil:
+    vscode.window.showErrorMessage("Test controller not initialized")
+    return
+    
+  try:
+    let state = ext
+    await loadTests(state)
+    vscode.window.showInformationMessage("Tests refreshed successfully")
+  except:
+    let msg = getCurrentExceptionMsg()
+    vscode.window.showErrorMessage("Failed to refresh tests: " & msg)
+
+proc initializeTests*(context: VscodeExtensionContext, state: ExtensionState) =
+  proc onExtensionReady() =
+    proc inner() {.async.} =
       testController = vscode.tests.createTestController("nim-tests".cstring, "Nim Tests".cstring)
-      #show message is there are not tests:
-      if listTestsRes.projectInfo.suites.keys.toSeq.len == 0:
-        vscode.window.showInformationMessage("No tests found for entry point: " & entryPoint)
-        return
-
-
-      for key, suite in listTestsRes.projectInfo.suites:
-        let suiteItem = testController.createTestItem(suite.name, suite.name)
-        for test in suite.tests:
-          let testItem = testController.createTestItem(test.name, test.name)
-          suiteItem.children.add(testItem)
-        testController.getItems().add(suiteItem)
-
+      
+      # Add refresh handler to show the refresh button in Test Explorer
+      testController.refreshHandler = proc() =
+        discard refreshTests()
+      
+      await loadTests(state)
+      
       discard testController.createRunProfile(
         "Run Tests",
         VscodeTestRunProfileKind.Run,
         runHandler,
         true
       )
-      
-
-
-      # console.log("Creating test controller...")
-      
-      
-      # # Add a dummy test item to verify everything works
-      # let dummyTest = testController.createTestItem(
-      #   "test1".cstring,
-      #   "Sample Test".cstring
-      # )
-      
-      # # Use the add method instead of push
-      # testController.getItems().add(dummyTest)
-
-      # let dummyFailingTest = testController.createTestItem(
-      #   "test2".cstring,
-      #   "Failing Test".cstring
-      # )
-
-      # testController.getItems().add(dummyFailingTest)
-      
-      # console.log("Created dummy test item")
-      
-      # # Create a run profile that will show up in the test explorer
-      # discard testController.createRunProfile(
-      #   "Run Tests",
-      #   VscodeTestRunProfileKind.Run,
-      #   runHandler,
-      #   true
-      # )
-      
-      # console.log("Test initialization complete")
-
-      # let suite = testController.createTestItem(
-      #   "suite1".cstring,
-      #   "My Test Suite".cstring
-      # )
-
-      # let testInSuite = testController.createTestItem(
-      #   "test-in-suite1".cstring,
-      #   "Test In Suite".cstring
-      # )
-      # let testInSuite2 = testController.createTestItem(
-      #   "test-in-suite2".cstring,
-      #   "Test In Suite 2".cstring
-      # )
-
-      # suite.children.add(testInSuite)
-      # suite.children.add(testInSuite2)
-
-      # testController.getItems().add(suite)
     discard inner()
 
   state.onExtensionReadyHooks.add(onExtensionReady)

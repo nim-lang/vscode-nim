@@ -1186,6 +1186,7 @@ type
       runHandler: proc(request: VscodeTestRunRequest, token: VscodeCancellationToken),
       isDefault: bool = false
     ): VscodeTestRunProfile
+    refreshHandler*: proc()
 
   VscodeTestRunProfile* = ref object of JsObject
     kind*: VscodeTestRunProfileKind
@@ -1229,6 +1230,7 @@ proc add*(collection: VscodeTestItemCollection, item: VscodeTestItem) {.importcp
 proc delete*(collection: VscodeTestItemCollection, item: VscodeTestItem) {.importcpp: "#.delete(#)".}
 proc forEach*(collection: VscodeTestItemCollection, callback: proc(item: VscodeTestItem)) {.importcpp: "#.forEach(#)".}
 proc size*(collection: VscodeTestItemCollection): cint {.importcpp: "#.size".}
+proc clear*(collection: VscodeTestItemCollection) {.importcpp: "#.clear".}
 
 # Test item methods
 proc getChildren*(item: VscodeTestItem): Array[VscodeTestItem] {.importcpp: "#.children".}
