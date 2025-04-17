@@ -6,6 +6,7 @@ import nimProjects
 import nimUtils
 
 var testController: VscodeTestController
+var runProfile: VscodeTestRunProfile = nil
 
 #[
 run.started(test) - Mark a test as running
@@ -112,8 +113,8 @@ proc runHandler(request: VscodeTestRunRequest, token: VscodeCancellationToken) =
 
     console.log("Include array: ", request.include)
 
-proc initializeTests*(context: VscodeExtensionContext, state: ExtensionState) =
-proc loadTests(state: ExtensionState): Future[void] {.async.} =
+
+proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.async.} =
   if excRunTests notin state.lspExtensionCapabilities:
     console.log("Run tests capability not found")
     return
@@ -122,22 +123,43 @@ proc loadTests(state: ExtensionState): Future[void] {.async.} =
   console.log("Entry point: ", entryPoint)
   
   let listTestsParams = ListTestsParams(entryPoints: @[entryPoint])
+  testController.getItems().clear()
   let listTestsRes = await fetchListTests(state, listTestsParams)
   
-  # Clear existing items
-  testController.getItems().clear()
   
-  if listTestsRes.projectInfo.suites.keys.toSeq.len == 0:
-    vscode.window.showInformationMessage("No tests found for entry point: " & entryPoint)
+  if listTestsRes.projectInfo.error != nil:
+    vscode.window.showErrorMessage(listTestsRes.projectInfo.error)
+    # Remove the run profile if it exists
+    if not runProfile.isNil:
+      runProfile.dispose()
+      runProfile = nil
     return
 
+  # Create run profile only if it doesn't exist
+  if runProfile.isNil:
+    runProfile = testController.createRunProfile(
+      "Run Tests",
+      VscodeTestRunProfileKind.Run,
+      runHandler,
+      true
+    )
+
+  if isRefresh:
+    vscode.window.showInformationMessage("Tests refreshed successfully")
+  else:
+    vscode.window.showInformationMessage("Tests loaded successfully")
+
+  if listTestsRes.projectInfo.suites.keys.toSeq.len == 0:
+    vscode.window.showInformationMessage("No tests found for entry point: " & entryPoint)
+    # Don't return here, let it continue to clear any existing error items
+  
+  # Load test items
   for key, suite in listTestsRes.projectInfo.suites:
     let suiteItem = testController.createTestItem(suite.name, suite.name)
     for test in suite.tests:
       let testItem = testController.createTestItem(test.name, test.name)
       suiteItem.children.add(testItem)
     testController.getItems().add(suiteItem)
-
 
 proc refreshTests*() {.async.} =
   if testController.isNil:
@@ -146,8 +168,7 @@ proc refreshTests*() {.async.} =
     
   try:
     let state = ext
-    await loadTests(state)
-    vscode.window.showInformationMessage("Tests refreshed successfully")
+    await loadTests(state, true)
   except:
     let msg = getCurrentExceptionMsg()
     vscode.window.showErrorMessage("Failed to refresh tests: " & msg)
@@ -157,18 +178,12 @@ proc initializeTests*(context: VscodeExtensionContext, state: ExtensionState) =
     proc inner() {.async.} =
       testController = vscode.tests.createTestController("nim-tests".cstring, "Nim Tests".cstring)
       
-      # Add refresh handler to show the refresh button in Test Explorer
       testController.refreshHandler = proc() =
         discard refreshTests()
       
       await loadTests(state)
       
-      discard testController.createRunProfile(
-        "Run Tests",
-        VscodeTestRunProfileKind.Run,
-        runHandler,
-        true
-      )
+      # Initial run profile creation moved to loadTests
     discard inner()
 
   state.onExtensionReadyHooks.add(onExtensionReady)

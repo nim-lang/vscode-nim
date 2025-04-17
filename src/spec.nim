@@ -84,6 +84,7 @@ type
   TestProjectInfo* = object
     entryPoints*: seq[cstring]
     suites*: JsAssoc[cstring, TestSuiteInfo]
+    error*: cstring
 
   ListTestsParams* = object
     entryPoints*: seq[cstring] #can be patterns? if empty we could do the same as nimble does or just run `nimble test args`
