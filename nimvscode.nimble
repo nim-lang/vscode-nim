@@ -12,7 +12,7 @@ bin = @["nimvscode"]
 
 # Deps
 
-requires "nim >= 2.0.0 & <= 2.1"
+requires "nim == 2.0.12"
 
 import std/os
 
@@ -20,12 +20,18 @@ proc initialNpmInstall() =
   if not dirExists "node_modules":
     exec "npm install"
 
+let compiler = "~/.nimble/nimbinaries/nim-2.0.12/bin/nim"
+# let compiler = "nim"
+
 # Tasks
 task main, "This compiles the vscode Nim extension":
-  exec "nim js --outdir:out --checks:on --sourceMap src/nimvscode.nim"
+  echo "Nim compiler is ", selfExe()
+  # exec "nimble shell"
+  # let compiler = "nim"
+  exec &"{compiler} js --outdir:out --checks:on --sourceMap src/nimvscode.nim"
 
 task release, "This compiles a release version":
-  exec "nim js -d:release -d:danger --outdir:out --checks:off --sourceMap src/nimvscode.nim"
+  exec &"{compiler} js -d:release -d:danger --outdir:out --checks:off --sourceMap src/nimvscode.nim"
 
 task vsix, "Build VSIX package":
   initialNpmInstall()
@@ -34,24 +40,22 @@ task vsix, "Build VSIX package":
     cmd = "powershell.exe " & cmd
   exec cmd
 
-task install_vsix, "Install the VSIX package":
+task installVsix, "Install the VSIX package":
   initialNpmInstall()
   exec "code --install-extension out/nimvscode-" & version & ".vsix"
 
 # Tasks for maintenance
-task audit_node_deps, "Audit Node.js dependencies":
+task auditNodeDeps, "Audit Node.js dependencies":
   initialNpmInstall()
   exec "npm audit"
   echo "NOTE: 'engines' versions in 'package.json' need manually audited"
 
-task upgrade_node_deps, "Upgrade Node.js dependencies":
+
+task upgradeNodeDeps, "Upgrade Node.js dependencies":
   initialNpmInstall()
   exec "npm exec -c 'ncu -ui'"
   exec "npm install"
   echo "NOTE: 'engines' versions in 'package.json' need manually upgraded"
 
-# # Tasks for publishing the extension
-# task extReleasePatch, "Patch release on vscode marketplace and openvsx registry":
-#   initialNpmInstall()
-#   exec "npm exec -c 'vsce publish patch'" # this bumps the version number
-#   exec "npm exec -c 'ovsx publish " & out/nimvscode-" & version & ".vsix & "'"
+task anotherTask, "This is another task":
+  echo "This is another task"
