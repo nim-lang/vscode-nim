@@ -1180,6 +1180,7 @@ type
   VscodeTestItemCollection* = ref object of JsObject
   VscodeTestController* = ref object of JsObject
     items*: VscodeTestItemCollection
+    error*: VscodeTestMessage
     createRunProfile*: proc(
       label: cstring,
       kind: VscodeTestRunProfileKind,
@@ -1187,6 +1188,7 @@ type
       isDefault: bool = false
     ): VscodeTestRunProfile
     refreshHandler*: proc()
+    errorHandler*: proc()
 
   VscodeTestRunProfile* = ref object of JsObject
     kind*: VscodeTestRunProfileKind
