@@ -82,12 +82,12 @@ type
     tests*: seq[TestInfo]
 
   TestProjectInfo* = object
-    entryPoints*: seq[cstring]
+    entryPoint*: cstring
     suites*: JsAssoc[cstring, TestSuiteInfo]
     error*: cstring
 
   ListTestsParams* = object
-    entryPoints*: seq[cstring] #can be patterns? if empty we could do the same as nimble does or just run `nimble test args`
+    entryPoint*: cstring #can be patterns? if empty we could do the same as nimble does or just run `nimble test args`
 
   ListTestsResult* = object
     projectInfo*: TestProjectInfo
@@ -107,12 +107,13 @@ type
     testResults*: seq[RunTestResult]
   
   RunTestParams* = object
-    entryPoints*: seq[cstring]
+    entryPoint*: cstring
     suiteName*: cstring #Optional, if provided, only run tests in the suite
     testNames*: seq[cstring] #Optional, if provided, only run the specific tests
     
   RunTestProjectResult* = object
     suites*: seq[RunTestSuiteResult]
+    fullOutput*: cstring
 
   LspExtensionCapability* = enum #List of extensions the lsp server support.
     excNone = "None"

@@ -481,10 +481,10 @@
                     "default": 120000,
                     "description": "The timeout in ms after which an idle nimsuggest will be stopped. If not specified the default is 120 seconds."
                 },
-                "nim.test.entryPoints":{
-                    "type": "array",
-                    "default": [],
-                    "description": "The entry points for the tests."
+                "nim.test.entryPoint":{
+                    "type": "string",
+                    "default": "",
+                    "description": "The entry point for the tests. If empty, the extension will ignore tests."
                 }
             }
         },

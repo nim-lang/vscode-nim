@@ -23,7 +23,7 @@ run.end() - Complete the test run
 proc isSuite(test: VscodeTestItem): bool =
   return test.children.size() > 0
 
-proc renderTestResult(test: VscodeTestItem, result: RunTestResult, run: VscodeTestRun) =
+proc renderTestResult(test: VscodeTestItem, result: RunTestResult, run: VscodeTestRun, fullOutput: cstring = "") =
   console.log("Rendering test result: ", result)
   let duration = result.time * 1000
   console.log("Duration: ", duration)
@@ -35,6 +35,8 @@ proc renderTestResult(test: VscodeTestItem, result: RunTestResult, run: VscodeTe
     run.appendOutput(&"[{test.label}] Test failed with error:\n")    
     run.appendOutput(result.failure)
     run.appendOutput(&"[{test.label}] Test failed in {duration:.4f}ms\n")
+  
+  run.appendOutput(fullOutput)
 
 
 proc renderTestProjectResult(projectResult: RunTestProjectResult, run: VscodeTestRun, testCol: Option[VscodeTestItemCollection]) =
@@ -44,19 +46,19 @@ proc renderTestProjectResult(projectResult: RunTestProjectResult, run: VscodeTes
         # Find the child test item that matches this result
         testCol.get.forEach(proc(childTest: VscodeTestItem) =
           if childTest.id == testResult.name:
-            renderTestResult(childTest, testResult, run)
+            renderTestResult(childTest, testResult, run, projectResult.fullOutput)
           childTest.children.forEach(proc(childChildTest: VscodeTestItem) =
             if childChildTest.id == testResult.name:
-              renderTestResult(childChildTest, testResult, run)
+              renderTestResult(childChildTest, testResult, run, projectResult.fullOutput)
           )
           )
 
 proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun) = 
   let state = ext
-  let entryPoint = state.config.getStrArray("test.entryPoints")[0]  
+  let entryPoint = state.config.getStr("test.entryPoint")  
   run.started(test)
   console.log("Running test: ", test.id)
-  var runTestParams = RunTestParams(entryPoints: @[entryPoint])
+  var runTestParams = RunTestParams(entryPoint: entryPoint)
   if test.isSuite:
     runTestParams.suiteName = test.id
   else:
@@ -67,7 +69,7 @@ proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun) =
     if test.isSuite:
       renderTestProjectResult(res, run, some test.children)
     else:
-      renderTestResult(test, res.suites[0].testResults[0], run)
+      renderTestResult(test, res.suites[0].testResults[0], run, res.fullOutput)
     run.`end`()
   )
   runTestRes.catch(proc(err: ref Exception) =
@@ -79,14 +81,14 @@ proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun) =
 proc runAllTests(request: VscodeTestRunRequest) =
   let run: VscodeTestRun = testController.createTestRun(request)
   let state = ext
-  let entryPoint = state.config.getStrArray("test.entryPoints")[0]  
+  let entryPoint = state.config.getStr("test.entryPoint")  
   testController.getItems().forEach(proc(item: VscodeTestItem) =
     run.started(item)
     item.children.forEach(proc(child: VscodeTestItem) =
       run.started(child)
     )
   )
-  var runTestParams = RunTestParams(entryPoints: @[entryPoint])
+  var runTestParams = RunTestParams(entryPoint: entryPoint)
   let runTestRes = requestRunTest(state, runTestParams)
   runTestRes.then(proc(res: RunTestProjectResult) =
     console.log("Run test result: ", res)
@@ -119,10 +121,12 @@ proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.a
     console.log("Run tests capability not found")
     return
     
-  let entryPoint = state.config.getStrArray("test.entryPoints")[0]
+  let entryPoint = state.config.getStr("test.entryPoint")
   console.log("Entry point: ", entryPoint)
-  
-  let listTestsParams = ListTestsParams(entryPoints: @[entryPoint])
+  if entryPoint == "":
+    vscode.window.showInformationMessage("No entry point specified, tests will not be loaded. You can specify the entry point in the settings `nim.test.entryPoint`.")
+    return
+  let listTestsParams = ListTestsParams(entryPoint: entryPoint)
   testController.getItems().clear()
   let listTestsRes = await fetchListTests(state, listTestsParams)
   
