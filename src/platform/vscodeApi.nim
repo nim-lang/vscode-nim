@@ -1171,7 +1171,7 @@ type
     children*: VscodeTestItemCollection
   
   VscodeTestRunRequest* = ref object of JsObject
-    `include`*: seq[VscodeTestItem]
+    `include`*: VscodeTestItemCollection
     exclude*: seq[VscodeTestItem]
     profile*: VscodeTestRunProfile
     continuous*: bool
@@ -1255,3 +1255,5 @@ proc createTestController*(
   id: cstring,
   label: cstring
 ): VscodeTestController {.importcpp: "#.createTestController(@)".}
+
+proc isCancellationRequested*(token: VscodeCancellationToken): bool {.importcpp: "#.isCancellationRequested".}

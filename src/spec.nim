@@ -115,6 +115,9 @@ type
     suites*: seq[RunTestSuiteResult]
     fullOutput*: cstring
 
+  CancelTestResult* = object
+    cancelled*: bool
+
   LspExtensionCapability* = enum #List of extensions the lsp server support.
     excNone = "None"
     excRestartSuggest = "RestartSuggest"
