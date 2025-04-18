@@ -237,6 +237,13 @@ proc requestRunTest*(state: ExtensionState, params: RunTestParams): Future[RunTe
   let test = response.jsonStringify().jsonParse(RunTestProjectResult)
   return test
 
+proc requestCancelTest*(state: ExtensionState): Future[CancelTestResult] {.async.} =
+  let client = state.client
+  let response = await client.sendRequest("extension/cancelTest", ().toJs())
+  console.log(response.jsonStringify())
+  let test = response.jsonStringify().jsonParse(CancelTestResult)
+  return test
+
 proc startClientSocket(portFut: Future[int]): proc(): Future[ServerOptions] {.async.} =
   return proc(): auto {.async.} =
     let port = await portFut

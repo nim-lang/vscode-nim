@@ -53,7 +53,7 @@ proc renderTestProjectResult(projectResult: RunTestProjectResult, run: VscodeTes
           )
           )
 
-proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun) = 
+proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun, token: VscodeCancellationToken = nil) = 
   let state = ext
   let entryPoint = state.config.getStr("test.entryPoint")  
   run.started(test)
@@ -63,6 +63,12 @@ proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun) =
     runTestParams.suiteName = test.id
   else:
     runTestParams.testNames = @[test.id]
+
+  # Check if cancelled before starting
+  if not token.isNil and token.isCancellationRequested:
+    run.skipped(test)
+    run.`end`()
+    return
 
   let runTestRes = requestRunTest(state, runTestParams)
   runTestRes.then(proc(res: RunTestProjectResult) =
@@ -78,16 +84,22 @@ proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun) =
     run.`end`()
   )
 
-proc runAllTests(request: VscodeTestRunRequest) =
-  let run: VscodeTestRun = testController.createTestRun(request)
+proc runAllTests(request: VscodeTestRunRequest, run: VscodeTestRun, token: VscodeCancellationToken = nil) =
   let state = ext
   let entryPoint = state.config.getStr("test.entryPoint")  
+  
+  # Check if cancelled before starting
+  if not token.isNil and token.isCancellationRequested:
+    run.`end`()
+    return
+    
   testController.getItems().forEach(proc(item: VscodeTestItem) =
     run.started(item)
     item.children.forEach(proc(child: VscodeTestItem) =
       run.started(child)
     )
   )
+  
   var runTestParams = RunTestParams(entryPoint: entryPoint)
   let runTestRes = requestRunTest(state, runTestParams)
   runTestRes.then(proc(res: RunTestProjectResult) =
@@ -101,28 +113,49 @@ proc runAllTests(request: VscodeTestRunRequest) =
       run.failed(item, VscodeTestMessage(message: err.msg), duration = 0)
     )
     run.`end`())
-    
+
 proc runHandler(request: VscodeTestRunRequest, token: VscodeCancellationToken) =
   console.log("Running tests...", request)
   let isRunAll = request.include.isUndefined
   console.log("Is run all: ", isRunAll)
+  let run = testController.createTestRun(request)
+
+  # Subscribe to cancellation
+  token.onCancellationRequested(proc() {.async.} =
+    #Call to the lsp to cancel the test run
+    console.log("Test run was cancelled")
+    let state = ext
+    let cancelTestRes = await requestCancelTest(state)
+    console.log("Cancelled test result: ", cancelTestRes)
+    if cancelTestRes.cancelled:
+      let allTests = if isRunAll: testController.getItems() else: request.include
+      allTests.forEach(proc(item: VscodeTestItem) =
+        run.skipped(item)
+        if item.isSuite:
+          item.children.forEach(proc(child: VscodeTestItem) =
+            run.skipped(child)
+          )
+      )
+      run.`end`()
+  )
+  
   if isRunAll:
-    runAllTests(request)
+    runAllTests(request, run, token)
   else:
-    let run: VscodeTestRun = testController.createTestRun(request)
-    for item in request.include:
-      runSingleTest(item,run)
+    request.include.forEach(proc(item: VscodeTestItem) =
+      runSingleTest(item, run, token)
+    )
 
-    console.log("Include array: ", request.include)
 
+proc getEntryPoint(state: ExtensionState): cstring =
+  state.config.getStr("test.entryPoint")
 
 proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.async.} =
   if excRunTests notin state.lspExtensionCapabilities:
     console.log("Run tests capability not found")
     return
     
-  let entryPoint = state.config.getStr("test.entryPoint")
-  console.log("Entry point: ", entryPoint)
+  let entryPoint = getEntryPoint(state)
   if entryPoint == "":
     vscode.window.showInformationMessage("No entry point specified, tests will not be loaded. You can specify the entry point in the settings `nim.test.entryPoint`.")
     return
