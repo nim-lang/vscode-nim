@@ -53,9 +53,19 @@ proc renderTestProjectResult(projectResult: RunTestProjectResult, run: VscodeTes
           )
           )
 
+proc getEntryPoint(state: ExtensionState): cstring =
+  result = state.config.getStr("test.entryPoint")
+  if result.len == 0:
+    result = state.dumpTestEntryPoint
+    if result.len > 0:
+      console.log("Using test entry point from nimble dump: ", result)
+    else:
+      console.log("No test entry point found")
+
+
 proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun, token: VscodeCancellationToken = nil) = 
   let state = ext
-  let entryPoint = state.config.getStr("test.entryPoint")  
+  let entryPoint = getEntryPoint(state)
   run.started(test)
   console.log("Running test: ", test.id)
   var runTestParams = RunTestParams(entryPoint: entryPoint)
@@ -145,16 +155,6 @@ proc runHandler(request: VscodeTestRunRequest, token: VscodeCancellationToken) =
     request.include.forEach(proc(item: VscodeTestItem) =
       runSingleTest(item, run, token)
     )
-
-
-proc getEntryPoint(state: ExtensionState): cstring =
-  result = state.config.getStr("test.entryPoint")
-  if result.len == 0:
-    result = state.dumpTestEntryPoint
-    if result.len > 0:
-      console.log("Using test entry point from nimble dump: ", result)
-    else:
-      console.log("No test entry point found")
 
 proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.async.} =
   if excRunTests notin state.lspExtensionCapabilities:
