@@ -148,7 +148,13 @@ proc runHandler(request: VscodeTestRunRequest, token: VscodeCancellationToken) =
 
 
 proc getEntryPoint(state: ExtensionState): cstring =
-  state.config.getStr("test.entryPoint")
+  result = state.config.getStr("test.entryPoint")
+  if result.len == 0:
+    result = state.dumpTestEntryPoint
+    if result.len > 0:
+      console.log("Using test entry point from nimble dump: ", result)
+    else:
+      console.log("No test entry point found")
 
 proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.async.} =
   if excRunTests notin state.lspExtensionCapabilities:
@@ -156,9 +162,6 @@ proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.a
     return
     
   let entryPoint = getEntryPoint(state)
-  if entryPoint == "":
-    vscode.window.showInformationMessage("No entry point specified, tests will not be loaded. You can specify the entry point in the settings `nim.test.entryPoint`.")
-    return
   let listTestsParams = ListTestsParams(entryPoint: entryPoint)
   testController.getItems().clear()
   let listTestsRes = await fetchListTests(state, listTestsParams)
@@ -190,11 +193,14 @@ proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.a
     vscode.window.showInformationMessage("No tests found for entry point: " & entryPoint)
     # Don't return here, let it continue to clear any existing error items
   
+  console.log("Loading tests", listTestsRes.projectInfo)
   # Load test items
   for key, suite in listTestsRes.projectInfo.suites:
     let suiteItem = testController.createTestItem(suite.name, suite.name)
+    console.log("Suite item", suiteItem)
     for test in suite.tests:
       let testItem = testController.createTestItem(test.name, test.name)
+      console.log("Test item", testItem)
       suiteItem.children.add(testItem)
     testController.getItems().add(suiteItem)
 
@@ -221,6 +227,7 @@ proc initializeTests*(context: VscodeExtensionContext, state: ExtensionState) =
       await loadTests(state)
       
       # Initial run profile creation moved to loadTests
+      context.subscriptions.add(testController)
     discard inner()
 
   state.onExtensionReadyHooks.add(onExtensionReady)
