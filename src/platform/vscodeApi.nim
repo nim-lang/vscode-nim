@@ -1178,7 +1178,7 @@ type
     debug*: bool
 
   VscodeTestItemCollection* = ref object of JsObject
-  VscodeTestController* = ref object of JsObject
+  VscodeTestController* = ref object of VscodeDisposable
     items*: VscodeTestItemCollection
     error*: VscodeTestMessage
     createRunProfile*: proc(

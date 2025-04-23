@@ -369,6 +369,11 @@ proc setNimDir(state: ExtensionState) =
           outputLine(
             fmt"[info] Using NimDir from nimble dump. NimDir: {state.nimDir}".cstring
           )
+        if line.startsWith("testEntryPoint"):
+          state.dumpTestEntryPoint = line[(1 + line.find '"') ..^ 2]
+          outputLine(
+            fmt"[info] Using testEntryPoint from nimble dump. testEntryPoint: {state.dumpTestEntryPoint}".cstring
+          )
   )
 
 
