@@ -168,7 +168,7 @@ proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.a
   
   
   if listTestsRes.projectInfo.error != nil:
-    vscode.window.showErrorMessage(listTestsRes.projectInfo.error)
+    vscode.window.showErrorMessage("There was an issue trying to load the tests (see lsp output for more details): \n" & listTestsRes.projectInfo.error)
     # Remove the run profile if it exists
     if not runProfile.isNil:
       runProfile.dispose()
