@@ -53,22 +53,25 @@ proc renderTestProjectResult(projectResult: RunTestProjectResult, run: VscodeTes
           )
           )
 
-proc getEntryPoint(state: ExtensionState): cstring =
-  result = state.config.getStr("test.entryPoint")
-  if result.len == 0:
-    result = state.dumpTestEntryPoint
-    if result.len > 0:
-      console.log("Using test entry point from nimble dump: ", result)
+proc getEntryPoint(state: ExtensionState): Option[cstring] =
+  var entryPoint = state.config.getStr("test.entryPoint")
+  if entryPoint.len == 0:
+    entryPoint = state.dumpTestEntryPoint
+    if entryPoint.len > 0:
+      console.log("Using test entry point from nimble dump: ", entryPoint)
+      result = some entryPoint
     else:
-      console.log("No test entry point found")
-
+      outputLine("No test entry point found")
+      result = none cstring
 
 proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun, token: VscodeCancellationToken = nil) = 
   let state = ext
   let entryPoint = getEntryPoint(state)
+  if entryPoint.isNone:
+    return
   run.started(test)
   console.log("Running test: ", test.id)
-  var runTestParams = RunTestParams(entryPoint: entryPoint)
+  var runTestParams = RunTestParams(entryPoint: entryPoint.get())
   if test.isSuite:
     runTestParams.suiteName = test.id
   else:
@@ -162,7 +165,9 @@ proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.a
     return
     
   let entryPoint = getEntryPoint(state)
-  let listTestsParams = ListTestsParams(entryPoint: entryPoint)
+  if entryPoint.isNone:
+    return
+  let listTestsParams = ListTestsParams(entryPoint: entryPoint.get())
   testController.getItems().clear()
   let listTestsRes = await fetchListTests(state, listTestsParams)
   
@@ -190,7 +195,7 @@ proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.a
     vscode.window.showInformationMessage("Tests loaded successfully")
 
   if listTestsRes.projectInfo.suites.keys.toSeq.len == 0:
-    vscode.window.showInformationMessage("No tests found for entry point: " & entryPoint)
+    vscode.window.showInformationMessage("No tests found for entry point: " & entryPoint.get())
     # Don't return here, let it continue to clear any existing error items
   
   console.log("Loading tests", listTestsRes.projectInfo)
@@ -206,8 +211,7 @@ proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.a
 
 proc refreshTests*() {.async.} =
   if testController.isNil:
-    vscode.window.showErrorMessage("Test controller not initialized")
-    return
+    testController = vscode.tests.createTestController("nim-tests".cstring, "Nim Tests".cstring)    
     
   try:
     let state = ext
