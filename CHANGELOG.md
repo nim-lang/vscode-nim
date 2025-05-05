@@ -1,5 +1,15 @@
 # ChangeLog
 
+## 1.8.0 (May 5 2024)
+
+* Implements the Test Runner API for unittest2 >= 0.2.4 and nimlangserver >= 1.12.0
+* Reduce extension size 
+* Menu entry "open generated file"
+
+## 1.6.0 (March 2025)
+
+* Removes Command Show Nim Language Server Status 
+* Improves syntax coloring for numbers 
 
 ## 1.4.1 (21 Jan 2025)
 * Adds `nim.nimExpandArc` and `nim.nimExpandMacro` settings to control the expansion of ARC and macros on hover (requires nimlangserver >= 1.8.1).
