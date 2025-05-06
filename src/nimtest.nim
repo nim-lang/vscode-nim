@@ -55,14 +55,17 @@ proc renderTestProjectResult(projectResult: RunTestProjectResult, run: VscodeTes
 
 proc getEntryPoint(state: ExtensionState): Option[cstring] =
   var entryPoint = state.config.getStr("test.entryPoint")
-  if entryPoint.len == 0:
+  result = none cstring
+  if entryPoint == "":
     entryPoint = state.dumpTestEntryPoint
-    if entryPoint.len > 0:
+    if entryPoint != "":
       console.log("Using test entry point from nimble dump: ", entryPoint)
       result = some entryPoint
     else:
       outputLine("No test entry point found")
       result = none cstring
+  else:
+    result = some entryPoint
 
 proc runSingleTest(test: VscodeTestItem, run: VscodeTestRun, token: VscodeCancellationToken = nil) = 
   let state = ext
@@ -166,11 +169,13 @@ proc loadTests(state: ExtensionState, isRefresh: bool = false): Future[void] {.a
     
   let entryPoint = getEntryPoint(state)
   if entryPoint.isNone:
+    console.log("No entry point found")
     return
   let listTestsParams = ListTestsParams(entryPoint: entryPoint.get())
   testController.getItems().clear()
+  console.log("Fetching tests")
   let listTestsRes = await fetchListTests(state, listTestsParams)
-  
+  console.log("Tests fetched", listTestsRes)
   
   if listTestsRes.projectInfo.error != nil:
     vscode.window.showErrorMessage("There was an issue trying to load the tests (see lsp output for more details): \n" & listTestsRes.projectInfo.error)
@@ -214,6 +219,7 @@ proc refreshTests*() {.async.} =
     testController = vscode.tests.createTestController("nim-tests".cstring, "Nim Tests".cstring)    
     
   try:
+    console.log("Refreshing tests")
     let state = ext
     await loadTests(state, true)
   except:

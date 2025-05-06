@@ -134,6 +134,18 @@ You should be set up now to be able to debug from a given file in the native VS 
 
 ---
 
+## [Experimental] Test runner
+
+The extension also support running tests. The project must be using `unittest2 >= 0.2.4` and a test entry point must be defined in the settings `nim.test.entryPoint`. Alternativaly, one can use the `testEntryPoint` setting from `nimble` (starting at `nimble 0.20.0`). 
+
+
+Tests will be listed in the vscode Test Explorer. There is a command `Refresh Tests` that re-runs test listing. 
+
+![Test runner screenshot](images/testrunner.png "test runner")
+
+
+---
+
 ## Code Completion
 
 This extension relies on the Nim Language Server for code completion. You can read more about it [here](https://github.com/nim-lang/langserver)
