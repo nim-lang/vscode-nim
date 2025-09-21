@@ -8,7 +8,7 @@ import platform/[vscodeApi, languageClientApi]
 import
   platform/js/
     [jsNodeFs, jsNodePath, jsNodeCp, jsNodeUtil, jsNodeOs, jsNodeNet, jsPromise]
-import nimutils
+import nimUtils
 from tools/nimBinTools import getNimbleExecPath, getBinPath, execNimbleCmd
 import spec
 
@@ -294,10 +294,10 @@ proc startSocket(
 proc refreshNimbleTasks*() {.async.} =
   ext.nimbleTasks = await fetchLsp[seq[NimbleTask]](ext, "extension/tasks")
 
-proc provideInlayHints(self: JsObject, document: JsObject, viewPort: JsObject, token: JsObject, next: JsObject): Promise[seq[InlayHint]] {.importjs: "#(@)".}
+proc next_provideInlayHints(self: JsObject, document: JsObject, viewPort: JsObject, token: JsObject): Promise[JsObject] {.importjs: "#(@)".}
 proc provideInlayHints(document: JsObject, viewPort: JsObject, token: JsObject, next: JsObject): Promise[seq[InlayHint]] {.async.}=
   var hintsToReturn = newSeq[InlayHint]()
-  let inlayHints = next.provideInlayHints(document, viewPort, token, next).await
+  let jsInlayHints = next_provideInlayHints(next, document, viewPort, token).await
   let decorationType: VscodeTextEditorDecorationType = vscode.window.createTextEditorDecorationType(
     VscodeDecorationRenderOptions(
       textDecoration: "underline #0CAFFF"
@@ -309,6 +309,11 @@ proc provideInlayHints(document: JsObject, viewPort: JsObject, token: JsObject, 
     for decoration in ext.propagatedDecorations[uri]:
       decoration.dispose()
   
+  if jsInlayHints.isNull or jsInlayHints.isUndefined:
+    return hintsToReturn
+
+  let inlayHints = jsInlayHints.to(seq[InlayHint])
+
   var decorationRanges: seq[VscodeDecorationOptions] = @[]
   let propagatedExceptionSymbol = vscode.workspace.getConfiguration("nim").getStr("inlayHints.exceptionHints.hintStringLeft")
   for hint in inlayHints:
