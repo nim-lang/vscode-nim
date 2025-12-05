@@ -1189,13 +1189,13 @@
       }
     },
     "fmt_interpolation": {
-      "begin": "\\{",
+      "begin": "\\{(?!\\{)",
       "beginCaptures": {
         "0": {
           "name": "punctuation.definition.template-expression.begin.nim"
         }
       },
-      "end": "\\}",
+      "end": "\\}(?!\\})",
       "endCaptures": {
         "0": {
           "name": "punctuation.definition.template-expression.end.nim"
