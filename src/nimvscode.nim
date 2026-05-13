@@ -737,9 +737,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
 
   # Register nimlangserver as an MCP server provider.
   let
-    mcpEmitter = newEventEmitter()
     mcpProvider = McpServerDefinitionProvider{
-      onDidChangeMcpServerDefinitions: mcpEmitter.event,
       provideMcpServerDefinitions: proc(): seq[McpStdioServerDefinition] =
         @[
           newMcpStdioServerDefinition(
