@@ -493,6 +493,12 @@
                 "language": "nim"
             }
         ],
+        "mcpServerDefinitionProviders": [
+            {
+                "id": "nimlangserver",
+                "label": "Nim Language Server"
+            }
+        ],
         "snippets": [
             {
                 "language": "nim",
