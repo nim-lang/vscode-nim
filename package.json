@@ -499,6 +499,11 @@
                 "label": "Nim Language Server"
             }
         ],
+        "chatSkills": [
+            {
+                "path": "./skills/nim-mcp-tools/SKILL.md"
+            }
+        ],
         "snippets": [
             {
                 "language": "nim",
