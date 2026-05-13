@@ -741,6 +741,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
       provideMcpServerDefinitions: proc(): seq[McpStdioServerDefinition] =
         @[
           newMcpStdioServerDefinition(
+            vscode,
             "Nim Language Server",
             "nimlangserver",
             @["--mcp".cstring]
