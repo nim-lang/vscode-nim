@@ -1270,10 +1270,11 @@ proc createTestController*(
 proc isCancellationRequested*(token: VscodeCancellationToken): bool {.importcpp: "#.isCancellationRequested".}
 
 proc newMcpStdioServerDefinition*(
+  vscode: Vscode,
   label: cstring,
   command: cstring,
   args: seq[cstring]
-): McpStdioServerDefinition {.importcpp: "new #.McpStdioServerDefinition(#, #, #)".}
+): McpStdioServerDefinition {.importcpp: "new #.McpStdioServerDefinition(@)".}
 
 proc registerMcpServerDefinitionProvider*(
   lm: VscodeLm,
