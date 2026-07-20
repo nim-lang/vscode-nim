@@ -11,8 +11,7 @@ binDir = "out"
 bin = @["nimvscode"]
 
 # Deps
-
-requires "nim >= 2.0.0 & <= 2.1"
+requires "nim >= 2.0.0"
 
 import std/os
 
