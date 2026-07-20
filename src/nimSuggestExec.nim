@@ -344,7 +344,8 @@ proc execNimSuggest*(
         )
 
       if r.toJs().isJsArray():
-        for parts in r.mapIt(it.getElems()).filterIt(it.len >= 8):
+        for lentParts in r.mapIt(it.getElems()).filterIt(it.len >= 8):
+          var parts = lentParts
           var doc = cstring(parts[7].getStr())
           if doc != "":
             doc = doc.replace(newRegExp(r"``", r"g"), "`")

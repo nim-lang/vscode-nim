@@ -196,7 +196,8 @@ proc indexFile(file: cstring) {.async.} =
         # add the module itself
         dbTypes.insert(moduleSymbol)
 
-      for i in infos:
+      for lentI in infos:
+        var i = lentI
         var folder = vscode.workspace.getWorkspaceFolder(i.location.uri)
         if folder.isNil():
           console.log("indexFile - dbTypes - not in workspace", i.location.uri.fsPath)

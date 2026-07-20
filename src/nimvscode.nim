@@ -351,14 +351,23 @@ proc clearCachesCmd(): void =
   discard clearCaches(config.getStrBoolMap("watcherExclude", defaultIndexExcludeGlobs))
 
 proc setNimDir(state: ExtensionState) =
-  #TODO allow the user specify a path in the settings
-  #Exec nimble dump and extract the nimDir if it exists
+  # Exec nimble dump to extract nimDir and testEntryPoint.
+  # Pass --nim:<path> so nimble knows which nim to use without running its SAT solver.
+  # getBinPath prepends ~/.nimble/bin and follows symlinks, so this works correctly
+  # even when VS Code is launched from the Dock with a limited PATH.
   if not vscode.workspace.workspaceFolders.toJs().to(bool):
     return
 
-  let path = vscode.workspace.workspaceFolders[0].uri.fsPath
+  let workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath
+  let nimPath = getBinPath("nim")
+  let args =
+    if nimPath != "" and not nimPath.isNil:
+      @["dump".cstring, ("--nim:" & $nimPath).cstring]
+    else:
+      @["dump".cstring]
+
   var process = cp.spawn(
-    getNimbleExecPath(), @["dump".cstring], SpawnOptions(shell: true, cwd: path)
+    getNimbleExecPath(), args, SpawnOptions(shell: true, cwd: workspacePath)
   )
 
   process.stdout.onData(
@@ -533,7 +542,6 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   discard vscode.workspace.onDidChangeConfiguration(configUpdate)
   vscode.debug.onDidStartDebugSession(onStartDebugSession)
 
-  setNimDir(state)
   let provider = config.getStr("provider")
 
   if provider == "lsp":
@@ -541,6 +549,7 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
     state.statusProvider = newNimLangServerStatusProvider()
     discard vscode.window.registerTreeDataProvider("nim", state.statusProvider)
   elif provider == "nimsuggest" and config.getBool("enableNimsuggest"):
+    setNimDir(state)
     initNimSuggest()
     ctx.subscriptions.add(
       vscode.languages.registerCompletionItemProvider(
@@ -711,7 +720,8 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
       timeout * 60000,
     )
 
-  discard initImports()
+  if provider == "nimsuggest":
+    discard initImports()
   outputLine("[info] Extension Activated")
   showNimbleSetupDialog()
 

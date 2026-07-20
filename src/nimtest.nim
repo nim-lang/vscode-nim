@@ -41,7 +41,8 @@ proc renderTestResult(test: VscodeTestItem, result: RunTestResult, run: VscodeTe
 
 proc renderTestProjectResult(projectResult: RunTestProjectResult, run: VscodeTestRun, testCol: Option[VscodeTestItemCollection]) =
   for suite in projectResult.suites:
-    for testResult in suite.testResults:
+    for lentTestResult in suite.testResults:
+      var testResult = lentTestResult
       if testCol.isSome:
         # Find the child test item that matches this result
         testCol.get.forEach(proc(childTest: VscodeTestItem) =

@@ -124,14 +124,22 @@ proc getNimbleModules(rootDir: cstring): Promise[seq[cstring]] =
   )
 
 proc initNimbleModules(rootDir: cstring): Promise[seq[cstring]] =
+  let nimPath = getNimExecPath()
+  let nimFlag: cstring =
+    if not nimPath.isNil and nimPath != "":
+      cstring(" --nim:" & $nimPath & " ")
+    else:
+      " "
   getNimbleModules(rootDir)
   .then(
     proc(nimbleModuleNames: seq[cstring]) =
-      for moduleName in nimbleModuleNames:
+      for lentModuleName in nimbleModuleNames:
+        var moduleName = lentModuleName
         try:
           var output: cstring = cp
             .execSync(
-              getNimbleExecPath() & " --y dump " & moduleName, ExecOptions{cwd: rootDir}
+              getNimbleExecPath() & nimFlag & "--y dump " & moduleName,
+              ExecOptions{cwd: rootDir}
             )
             .toString()
           var nimbleModule = NimbleModuleInfo{name: moduleName}
