@@ -321,35 +321,36 @@ proc load(db: FlatDb): Future[void] =
 
 proc newFlatDb*(path: cstring, inmemory: bool = false): FlatDb =
   # if inmemory is set to true the filesystem gets not touched at all.
-  result = FlatDb()
-  result.path = path
-  result.inmemory = inmemory
+  var db = FlatDb()
+  db.path = path
+  db.inmemory = inmemory
   if not inmemory:
     if not fs.existsSync(path):
       fs.writeFileSync(path, "")
-    result.fileHandle = fsp.open(path, "r+")
-    result.autoCompactInterval = 600000 # 10 minutes(s)
-    result.opCount = 0
-    result.loaded = false
-    result.ioBusy = false
-    result.cmdBuffer = newArray[DbCmd]()
-    result.compactTimeout = global.setInterval(
+    db.fileHandle = fsp.open(path, "r+")
+    db.autoCompactInterval = 600000 # 10 minutes(s)
+    db.opCount = 0
+    db.loaded = false
+    db.ioBusy = false
+    db.cmdBuffer = newArray[DbCmd]()
+    db.compactTimeout = global.setInterval(
       proc(): void =
-        if result.loaded:
-          discard result.compact()
+        if db.loaded:
+          discard db.compact()
       ,
-      result.autoCompactInterval,
+      db.autoCompactInterval,
     )
-    result.processTimeout = global.setInterval(
+    db.processTimeout = global.setInterval(
       proc(): void =
-        if result.loaded:
-          discard result.processCommands()
+        if db.loaded:
+          discard db.processCommands()
       ,
       10000, # 10 seconds
     )
-    discard result.load()
+    discard db.load()
 
-  result.nodes = newFlatDbTable()
+  db.nodes = newFlatDbTable()
+  result = db
 
 proc close*(db: FlatDb) {.async.} =
   # TODO this and opening the file need to handle intervals
