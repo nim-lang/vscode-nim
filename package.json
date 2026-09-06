@@ -485,6 +485,21 @@
                     "type": "string",
                     "default": "",
                     "description": "The entry point for the tests. If empty, the extension will ignore tests."
+                },
+                "nim.localImportSuggestions": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Collects info about local modules during startup for import suggestions."
+                },
+                "nim.packageImportSuggestions": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Collects a list of available nimble packages during startup for import suggestions."
+                },
+                "nim.packageSuggestionDetails": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Collects extra details about nimble packages during startup to include in import suggestions."
                 }
             }
         },
