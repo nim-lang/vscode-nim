@@ -123,10 +123,10 @@ proc getNimbleModules(rootDir: cstring): Promise[seq[cstring]] =
       )
   )
 
-proc initNimbleModules(rootDir: cstring): Promise[seq[cstring]] =
-  getNimbleModules(rootDir)
-  .then(
-    proc(nimbleModuleNames: seq[cstring]) =
+proc initNimbleModules(rootDir: cstring, details: bool): Promise[seq[cstring]] =
+  var prevPromise = getNimbleModules(rootDir)
+  if details:
+    prevPromise = prevPromise.then(proc(nimbleModuleNames: seq[cstring]) =
       for moduleName in nimbleModuleNames:
         try:
           var output: cstring = cp
@@ -150,10 +150,8 @@ proc initNimbleModules(rootDir: cstring): Promise[seq[cstring]] =
         except:
           console.log(
             "Module incorrect " & moduleName, getCurrentExceptionMsg().cstring
-          )
-  )
-  .toJs()
-  .to(Promise[seq[cstring]])
+          ))
+  result = prevPromise.toJs().to(Promise[seq[cstring]])
 
 proc getImports*(prefix: cstring, projectDir: cstring): seq[VscodeCompletionItem] =
   console.log("getImports", jsArguments)
@@ -192,23 +190,26 @@ proc getImports*(prefix: cstring, projectDir: cstring): seq[VscodeCompletionItem
         return suggestions
   return suggestions
 
-proc initImports*(): Promise[void] =
+proc initImports*(local, package, packageDetails: bool): Promise[void] =
   var folders = vscode.workspace.workspaceFolders
   var prevPromise: Promise[void] = newEmptyPromise()
-  if folders.toJs().to(bool):
-    prevPromise = initNimbleModules(folders[0].uri.fsPath).toJs().to(Promise[void])
 
-  if isProjectMode():
-    for project in getProjects():
-      prevPromise = prevPromise.then(
+  if package:
+    if folders.toJs().to(bool):
+      prevPromise = initNimbleModules(folders[0].uri.fsPath, packageDetails).toJs().to(Promise[void])
+
+  if local:
+    if isProjectMode():
+      for project in getProjects():
+        prevPromise = prevPromise.then(
+          proc() =
+            discard initNimDirectories(project.wsFolder.uri.fsPath, project.filePath)
+        )
+    elif folders.toJs().to(bool):
+      prevPromise.then(
         proc() =
-          discard initNimDirectories(project.wsFolder.uri.fsPath, project.filePath)
+          discard initNimDirectories(folders[0].uri.fsPath, "")
       )
-  elif folders.toJs().to(bool):
-    prevPromise.then(
-      proc() =
-        discard initNimDirectories(folders[0].uri.fsPath, "")
-    )
 
   return prevPromise
 

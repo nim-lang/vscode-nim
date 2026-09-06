@@ -711,7 +711,10 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
       timeout * 60000,
     )
 
-  discard initImports()
+  let localImports = config.getBool("localImportSuggestions")
+  let packageImports = config.getBool("packageImportSuggestions")
+  let packageImportDetails = config.getBool("packageSuggestionDetails")
+  discard initImports(local = localImports, package = packageImports, packageDetails = packageImportDetails)
   outputLine("[info] Extension Activated")
   showNimbleSetupDialog()
 
