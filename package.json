@@ -398,7 +398,7 @@
                 },
                 "nim.inlayHints.exceptionHints.enable": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Enable inlay hints for exceptions."
                 },
                 "nim.inlayHints.exceptionHints.hintStringLeft": {
