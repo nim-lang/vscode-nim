@@ -100,7 +100,7 @@ proc getNimbleExecPath*(): cstring =
 
 proc execNimbleCmd*(args: seq[cstring], dirPath: cstring, onCloseCb: proc(code: cint, signal: cstring): void {.closure.}) = 
     var process = cp.spawn(
-      getNimbleExecPath(), @["setup".cstring], SpawnOptions(shell: true, cwd: dirPath)
+      getNimbleExecPath(), args, SpawnOptions(shell: true, cwd: dirPath)
     )
     process.stdout.onData(
       proc(data: Buffer) =

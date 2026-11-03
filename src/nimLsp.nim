@@ -136,11 +136,11 @@ proc getLspPath(state: ExtensionState): (cstring, LSPInstallPathKind) =
 proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.}
 
 proc installNimLangServer(state: ExtensionState, version: Option[LSPVersion]) =
-  var installCmd = "install nimlangserver"
+  var package = "nimlangserver"
   if version.isSome:
     let v = version.get
-    installCmd.add("@" & &"{v.major}.{v.minor}.{v.patch}")
-  let args: seq[cstring] = @[installCmd.cstring, "--accept", "-l"]
+    package.add("@" & &"{v.major}.{v.minor}.{v.patch}")
+  let args: seq[cstring] = @["install".cstring, package.cstring, "--accept", "-l"]
   
   proc onClose (code: cint, signal: cstring): void =
     if code == 0:
@@ -292,7 +292,10 @@ proc startSocket(
   startClientSocket(portPromise)
 
 proc refreshNimbleTasks*() {.async.} =
+  if excNimbleTask notin ext.lspExtensionCapabilities:
+    return
   ext.nimbleTasks = await fetchLsp[seq[NimbleTask]](ext, "extension/tasks")
+  ext.nimbleTasksChanged.fire(nil)
 
 proc next_provideInlayHints(self: JsObject, document: JsObject, viewPort: JsObject, token: JsObject): Promise[JsObject] {.importjs: "#(@)".}
 proc provideInlayHints(document: JsObject, viewPort: JsObject, token: JsObject, next: JsObject): Promise[seq[InlayHint]] {.async.}=
@@ -470,7 +473,17 @@ proc startLanguageServer(tryInstall: bool, state: ExtensionState) {.async.} =
         refreshNotifications(state.statusProvider, nots),
     )
 
-    await refreshNimbleTasks()
+    # Task discovery is optional and must not hold up extension activation.
+    # Wait for the server's capabilities before sending extension requests.
+    proc refreshTasks() =
+      discard refreshNimbleTasks().catch(
+        proc(reason: JsObject) =
+          console.warn("Could not refresh Nimble tasks", reason)
+      )
+    if state.extensionReady:
+      refreshTasks()
+    else:
+      state.onExtensionReadyHooks.add(refreshTasks)
 
     let expiredTime = state.config.getInt("notificationTimeout")
     if expiredTime > 0:
