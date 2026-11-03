@@ -295,6 +295,7 @@ proc refreshNimbleTasks*() {.async.} =
   if excNimbleTask notin ext.lspExtensionCapabilities:
     return
   ext.nimbleTasks = await fetchLsp[seq[NimbleTask]](ext, "extension/tasks")
+  ext.nimbleTasksChanged.fire(nil)
 
 proc next_provideInlayHints(self: JsObject, document: JsObject, viewPort: JsObject, token: JsObject): Promise[JsObject] {.importjs: "#(@)".}
 proc provideInlayHints(document: JsObject, viewPort: JsObject, token: JsObject, next: JsObject): Promise[seq[InlayHint]] {.async.}=

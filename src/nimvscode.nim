@@ -500,6 +500,17 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   )
   nimUtils.ext = state
 
+  state.nimbleTasksChanged = vscode.newEventEmitter()
+  let nimbleCodeLensProvider = newCodeLensProvider(provideNimbleTasksCodeLenses)
+  nimbleCodeLensProvider.onDidChangeCodeLenses = state.nimbleTasksChanged.event
+  ctx.subscriptions.add(
+    vscode.languages.registerCodeLensProvider(
+      VscodeDocumentFilter(language: "nimble", scheme: "file"),
+      nimbleCodeLensProvider
+    )
+  )
+  ctx.subscriptions.add(cast[VscodeDisposable](state.nimbleTasksChanged))
+
   nimSuggestExec.extensionContext = ctx
   nimFormatting.extensionContext = ctx
 
@@ -714,14 +725,6 @@ proc activate*(ctx: VscodeExtensionContext): void {.async.} =
   discard initImports()
   outputLine("[info] Extension Activated")
   showNimbleSetupDialog()
-
-  let nimbleCodeLensProvider = newCodeLensProvider(provideNimbleTasksCodeLenses)
-  ctx.subscriptions.add(
-    vscode.languages.registerCodeLensProvider(
-      VscodeDocumentFilter(language: "nimble", scheme: "file"),
-      nimbleCodeLensProvider
-    )
-  )
 
   # Watch for .nimble files
   let nimbleWatcher = vscode.workspace.createFileSystemWatcher("**/*.nimble")

@@ -137,6 +137,7 @@ type
     lspVersion*: LSPVersion
     lspExtensionCapabilities*: set[LspExtensionCapability]
     nimbleTasks*: seq[NimbleTask]
+    nimbleTasksChanged*: EventEmitter
     propagatedDecorations*: Table[cstring, seq[VscodeTextEditorDecorationType]]
     extensionReady*: bool
     onExtensionReadyHooks*: seq[proc()] #Called when the extension has stablished the connection with the lsp server and is initialized
